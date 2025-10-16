@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical AI Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="ai-avatar">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <div class="header-info">
+                        <h1>Medical AI Assistant</h1>
+                        <span class="status-indicator">
+                            <span class="status-dot"></span>
+                            Online & Ready to Help
+                        </span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="info-btn" onclick="toggleInfo()">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="info-panel" id="infoPanel">
+            <div class="info-content">
+                <h3><i class="fas fa-shield-alt"></i> Important Medical Disclaimer</h3>
+                <p>This AI assistant provides educational information only and should not replace professional medical advice, diagnosis, or treatment. Always consult with qualified healthcare providers for medical concerns.</p>
+                <div class="info-features">
+                    <h4>Features:</h4>
+                    <ul>
+                        <li><i class="fas fa-brain"></i> AI-powered medical information</li>
+                        <li><i class="fas fa-search"></i> Evidence-based responses</li>
+                        <li><i class="fas fa-clock"></i> 24/7 availability</li>
+                        <li><i class="fas fa-lock"></i> Secure and private</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <div class="message-avatar">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="sender-name">Medical AI Assistant</span>
+                        <span class="message-time" id="welcomeTime"></span>
+                    </div>
+                    <div class="message-text">
+                        <p>Hello! I'm your Medical AI Assistant. I can help answer medical questions using evidence-based information from medical literature.</p>
+                        <p><strong>Please note:</strong> I provide educational information only. For medical emergencies, contact emergency services immediately.</p>
+                        <div class="suggested-questions">
+                            <p><strong>Try asking about:</strong></p>
+                            <div class="suggestion-buttons">
+                                <button class="suggestion-btn" onclick="sendSuggestion('What are the symptoms of hypertension?')">
+                                    Hypertension symptoms
+                                </button>
+                                <button class="suggestion-btn" onclick="sendSuggestion('How is diabetes diagnosed?')">
+                                    Diabetes diagnosis
+                                </button>
+                                <button class="suggestion-btn" onclick="sendSuggestion('What are common heart disease risk factors?')">
+                                    Heart disease risks
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar">
+                <i class="fas fa-user-md"></i>
+            </div>
+            <div class="typing-content">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <span class="typing-text">AI is analyzing your question...</span>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-container">
+            <div class="input-wrapper">
+                <div class="input-group">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Ask a medical question... (e.g., 'What are the symptoms of diabetes?')"
+                        rows="1"
+                        maxlength="1000"
+                    ></textarea>
+                    <div class="input-actions">
+                        <span class="char-counter" id="charCounter">0/1000</span>
+                        <button type="button" id="sendButton" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="input-footer">
+                <span class="disclaimer-text">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    For medical emergencies, call emergency services immediately
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Processing your medical question...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
