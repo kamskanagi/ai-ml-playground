@@ -29,7 +29,17 @@ def web_search(query: str) -> str:
     except Exception as e:
         return f"Search error: {str(e)}"
 
-tools = {calculator.name: calculator, web_search.name: web_search}
+@tool
+def summarise(text: str) -> str:
+    """Summarises a long piece of text into a few concise sentences."""
+    prompt = f"Summarise the following text in 2-3 sentences:\n\n{text}"
+    return llm.invoke(prompt)
+
+tools = {
+    calculator.name: calculator,
+    web_search.name: web_search,
+    summarise.name: summarise,
+}
 
 # Step 3: ReAct prompt — instructs phi3 to output Thought/Action/Action Input pattern
 REACT_PROMPT = """You are a reasoning agent. Answer the question using the available tools.
