@@ -104,7 +104,22 @@ def run_agent(question: str, history: list[tuple[str, str]], max_steps: int = 6)
 
 
 if __name__ == "__main__":
-    question = "What is 245 multiplied by 18, and then divided by 5?"
-    print(f"\nQuestion: {question}")
-    answer = run_agent(question)
-    print(f"\n--- Agent Response ---\n{answer}")
+    print("Local phi3 Agent — type 'exit' or press Ctrl-C to quit.\n")
+    history: list[tuple[str, str]] = []
+
+    while True:
+        try:
+            question = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye.")
+            break
+
+        if not question:
+            continue
+        if question.lower() in {"exit", "quit"}:
+            print("Goodbye.")
+            break
+
+        answer = run_agent(question, history)
+        print(f"\nAgent: {answer}\n")
+        history.append((question, answer))
