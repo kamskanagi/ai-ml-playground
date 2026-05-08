@@ -42,27 +42,39 @@ tools = {
 }
 
 # Step 3: ReAct prompt — instructs phi3 to output Thought/Action/Action Input pattern
-REACT_PROMPT = """You are a reasoning agent. Answer the question using the available tools.
+REACT_PROMPT = """You are a helpful local AI assistant. Answer the user's question using the available tools.
 
 Available tools:
 - calculator: Evaluates a Python math expression (e.g. "245 * 18 / 5")
-- web_search: Searches the web using DuckDuckGo and returns the top 3 result snippets.
+- web_search: Searches the web for current information (e.g. "latest Python release")
+- summarise: Summarises a long piece of text into a few sentences
 
-Respond strictly in this loop until you have the answer:
+Respond in this loop until you have the answer:
 Thought: <your reasoning>
-Action: calculator
-Action Input: <math expression>
+Action: <tool name>
+Action Input: <input for the tool>
 Observation: <tool result will be inserted here>
 
-When done, output:
+When you have enough information, output:
 Thought: I now know the final answer.
 Final Answer: <your answer>
 
-Question: {question}
+{history}Question: {question}
 """
 
-def run_agent(question: str, max_steps: int = 6) -> str:
-    prompt = REACT_PROMPT.format(question=question)
+def format_history(history: list[tuple[str, str]]) -> str:
+    if not history:
+        return ""
+    lines = []
+    for question, answer in history:
+        lines.append(f"Previous Q: {question}\nPrevious A: {answer}\n")
+    return "\n".join(lines) + "\n"
+
+def run_agent(question: str, history: list[tuple[str, str]], max_steps: int = 6) -> str:
+    prompt = REACT_PROMPT.format(
+        history=format_history(history),
+        question=question,
+    )
 
     for step in range(max_steps):
         output = llm.invoke(prompt)
@@ -86,7 +98,6 @@ def run_agent(question: str, max_steps: int = 6) -> str:
             print(f"[Tool] {action}({action_input!r}) → {observation}")
             prompt += output + f"\nObservation: {observation}\n"
         else:
-            # Model gave a direct answer without following the format
             return output
 
     return "Max steps reached without a final answer."
