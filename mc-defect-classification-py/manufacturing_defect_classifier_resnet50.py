@@ -12,10 +12,10 @@ Pipeline
            train/  <class_name>/  *.png
            val/    <class_name>/  *.png
            test/   <class_name>/  *.png
-2. Fine-tune only the final classification head for 5 epochs (fast, low risk
-   of catastrophic forgetting).
-3. Re-train all layers with class-weighted loss for 15 epochs to handle any
-   class imbalance in the dataset.
+2. Fine-tune only the final classification head for NUM_EPOCHS epochs (fast,
+   low risk of catastrophic forgetting).
+3. Re-train all layers with class-weighted loss for NUM_EPOCHS_FINE_TUNE epochs
+   to handle any class imbalance in the dataset.
 4. Evaluate both models on the held-out test set (confusion matrix + per-class
    precision / recall / F1).
 5. Run single-image inference to demonstrate deployment usage.
@@ -56,9 +56,16 @@ from torchvision import datasets, models, transforms
 
 DATA_DIR        = 'my_defect_dataset'   # root folder produced by data_organizer.py
 BATCH_SIZE      = 32
-NUM_EPOCHS      = 5                     # initial head-only training
+
+# Phase 1 — train the classification head only (backbone frozen)
+NUM_EPOCHS      = 5
 LEARNING_RATE   = 0.001
 MODEL_SAVE_PATH = 'best_defect_classifier_multi_category.pth'
+
+# Phase 2 — full fine-tune with class-weighted loss (all layers unfrozen)
+NUM_EPOCHS_FINE_TUNE   = 15
+LEARNING_RATE_FINE_TUNE = 0.0001        # lower LR protects pretrained features
+FINE_TUNE_SAVE_PATH    = 'best_fine_tuned_classifier.pth'
 
 # ImageNet statistics — required because the ResNet-50 backbone was pretrained
 # on ImageNet; using the same normalisation keeps feature representations valid.
@@ -359,14 +366,12 @@ def main():
 
     criterion_weighted  = nn.CrossEntropyLoss(weight=class_weights)
     unfreeze_all_layers(model)
-    # Lower learning rate protects pretrained features from large gradient updates
-    optimizer_fine_tune = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer_fine_tune = optim.Adam(model.parameters(), lr=LEARNING_RATE_FINE_TUNE)
 
-    FINE_TUNE_SAVE_PATH = 'best_fine_tuned_classifier.pth'
     model = train_model(
         model, dataloaders, dataset_sizes,
         criterion_weighted, optimizer_fine_tune, device,
-        num_epochs=15,
+        num_epochs=NUM_EPOCHS_FINE_TUNE,
     )
     torch.save(model.state_dict(), FINE_TUNE_SAVE_PATH)
     print(f"Fine-tuned checkpoint saved → {FINE_TUNE_SAVE_PATH}")
