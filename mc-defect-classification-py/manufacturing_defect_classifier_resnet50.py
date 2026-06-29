@@ -360,6 +360,9 @@ def main():
         train_counts[label] += 1
 
     total_samples = sum(train_counts)
+    # Simplified weighting: total / count. The standard formula divides by
+    # (num_classes * count) to keep loss magnitude near the unweighted baseline,
+    # but this version works and is easier to follow for a teaching example.
     class_weights = (total_samples / torch.tensor(train_counts, dtype=torch.float)).to(device)
     print(f"Class counts:  {train_counts}")
     print(f"Class weights: {class_weights.tolist()}")
