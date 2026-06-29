@@ -67,6 +67,9 @@ NUM_EPOCHS_FINE_TUNE   = 15
 LEARNING_RATE_FINE_TUNE = 0.0001        # lower LR protects pretrained features
 FINE_TUNE_SAVE_PATH    = 'best_fine_tuned_classifier.pth'
 
+# Single-image inference demo — update this path to test a different image
+SAMPLE_IMAGE_PATH = 'my_defect_dataset/test/defective_product/screw_test_manipulated_front_009.png'
+
 # ImageNet statistics — required because the ResNet-50 backbone was pretrained
 # on ImageNet; using the same normalisation keeps feature representations valid.
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -178,6 +181,8 @@ def train_model(model, dataloaders, dataset_sizes, criterion, optimizer,
     model : nn.Module – loaded with the best validation-accuracy weights
     """
     since          = time.time()
+    # deepcopy stores a full duplicate of all weights in memory — acceptable here
+    # but scales poorly for very large models (e.g. ViTs with hundreds of layers).
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc       = 0.0
 
@@ -383,13 +388,16 @@ def main():
 
     # --- Single-image demo ---
     print("\n=== Single-image inference demo ===")
-    sample_path    = 'my_defect_dataset/test/defective_product/screw_test_manipulated_front_009.png'
+    if not os.path.exists(SAMPLE_IMAGE_PATH):
+        print(f"Sample image not found, skipping demo: {SAMPLE_IMAGE_PATH}")
+        return
+
     inference_model = load_model_for_inference(FINE_TUNE_SAVE_PATH, num_classes, device)
 
     predicted_class, confidence = predict_image(
-        sample_path, inference_model, val_test_transforms, class_names, device,
+        SAMPLE_IMAGE_PATH, inference_model, val_test_transforms, class_names, device,
     )
-    print(f"Image:      {sample_path}")
+    print(f"Image:      {SAMPLE_IMAGE_PATH}")
     print(f"Prediction: {predicted_class}")
     print(f"Confidence: {confidence:.4f}")
 
