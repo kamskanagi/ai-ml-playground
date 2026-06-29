@@ -121,16 +121,6 @@ The script runs both training phases end-to-end and saves two checkpoints:
 - `best_defect_classifier_multi_category.pth` — phase 1 (head-only) weights
 - `best_fine_tuned_classifier.pth` — phase 2 (full fine-tune) weights
 
-### 6. Running Tests
-
-```bash
-pip install -r requirements-dev.txt
-python -m pytest tests/ -v
-```
-
-This runs:
-- `tests/test_data_organizer.py` — verifies correct dataset splitting and no filename collisions.
-- `tests/test_inference_smoke.py` — loads a sample image, runs it through ResNet-50, and checks for a valid output shape.
 
 ### Contributions
 Contributions are welcome! Feel free to fork this repository, make improvements, and submit pull requests.
