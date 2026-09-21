@@ -28,6 +28,23 @@ class RootCause(StrEnum):
     NO_FAULT_FALSE_ALARM = "no_fault_false_alarm"
 
 
+class AlarmCode(StrEnum):
+    """MES alarm codes.
+
+    Deliberately fewer codes than root causes: PRESSURE_EXCURSION covers both a real
+    recipe-induced drift and a harmless transient, and RF_REFLECTED_HIGH covers both
+    PM wear and match-network degradation. Those pairs carry *different* correct
+    actions, so the alarm code alone never determines the answer — the agent has to
+    actually investigate.
+    """
+
+    PRESSURE_EXCURSION = "PRESSURE_EXCURSION"
+    HE_LEAK_HIGH = "HE_LEAK_HIGH"
+    RF_REFLECTED_HIGH = "RF_REFLECTED_HIGH"
+    CHUCK_TEMP_OOR = "CHUCK_TEMP_OOR"
+    GAS_FLOW_UNSTABLE = "GAS_FLOW_UNSTABLE"
+
+
 class AlarmStatus(StrEnum):
     OPEN = "open"
     TRIAGED = "triaged"

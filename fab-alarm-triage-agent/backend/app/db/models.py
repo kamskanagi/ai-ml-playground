@@ -50,6 +50,24 @@ class Equipment(Base):
     runs: Mapped[list[ProcessRun]] = relationship(back_populates="equipment")
 
 
+class PmEvent(Base):
+    """Preventive-maintenance history.
+
+    `Equipment.last_pm_at` is only the most recent event. Triage needs "how overdue was
+    this tool *when the alarm fired*", which a single denormalised column cannot answer
+    for an alarm raised weeks ago — hence a real history table.
+    """
+
+    __tablename__ = "pm_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.id"), index=True)
+    performed_at: Mapped[datetime] = _ts(index=True)
+    performed_by: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16), default="scheduled")
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+
 class Recipe(Base):
     __tablename__ = "recipes"
 
