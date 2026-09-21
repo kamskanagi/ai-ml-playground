@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Env
+.env
+.env.local
+
+# Data cache (SECOM is downloaded, not vendored)
+backend/app/seed/.cache/
+
+# Node / Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Eval output
+eval/reports/*.json
+eval/reports/*.md
+
+# OS
+.DS_Store

@@ -1,0 +1,41 @@
+name: fab-alarm-triage
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fab}
+      POSTGRES_DB: ${POSTGRES_DB:-fab_mes}
+    ports:
+      # 5433 on the host: 5432 is commonly already taken by another local Postgres.
+      # In-network callers still use postgres:5432.
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fab} -d ${POSTGRES_DB:-fab_mes}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-fab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fab}
+      POSTGRES_DB: ${POSTGRES_DB:-fab_mes}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      MCP_URL: http://mcp:9000/mcp
+      MAX_TOOL_CALLS: ${MAX_TOOL_CALLS:-12}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

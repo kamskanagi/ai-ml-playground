@@ -1,0 +1,136 @@
+# SECOM column -> named fab signal.
+#
+# SECOM's 590 columns are anonymised, so any semantic naming is a modelling choice.
+# The 16 columns below were selected empirically (see tools/profile_secom.py):
+# zero missing values, >800 distinct values, and the lowest absolute skew of the
+# 26 that qualify. The lowest-skew columns are assigned to the signals the fault
+# scenarios key on (pressure, leak rate, RF power), because those get read most.
+#
+# Values are z-scored across the dataset then rescaled into the declared engineering
+# range as:  value = midpoint(lcl, ucl) + z * (ucl - lcl) / 6
+# so a nominal run sits mid-band and ~99.7% of untouched runs fall inside the limits.
+# The scenario generator is what pushes specific runs out of limit.
+
+signals:
+  - column: 393
+    key: chamber_pressure
+    label: Chamber Pressure
+    unit: mTorr
+    lcl: 45.0
+    ucl: 55.0
+    floor: 0.0
+  - column: 527
+    key: rf_forward_power
+    label: RF Forward Power
+    unit: W
+    lcl: 950.0
+    ucl: 1050.0
+    floor: 0.0
+  - column: 255
+    key: rf_reflected_power
+    label: RF Reflected Power
+    unit: W
+    lcl: 0.0
+    ucl: 15.0
+    floor: 0.0
+  - column: 115
+    key: he_leak_rate
+    label: Helium Leak Rate
+    unit: sccm
+    lcl: 0.0
+    ucl: 2.0
+    floor: 0.0
+  - column: 88
+    key: endpoint_intensity
+    label: Endpoint Intensity
+    unit: a.u.
+    lcl: 400.0
+    ucl: 600.0
+    floor: 0.0
+  - column: 120
+    key: throttle_valve_angle
+    label: Throttle Valve Angle
+    unit: deg
+    lcl: 25.0
+    ucl: 65.0
+    floor: 0.0
+    ceiling: 100.0
+  - column: 526
+    key: cf4_flow
+    label: CF4 Flow
+    unit: sccm
+    lcl: 90.0
+    ucl: 110.0
+    floor: 0.0
+  - column: 571
+    key: o2_flow
+    label: O2 Flow
+    unit: sccm
+    lcl: 8.0
+    ucl: 12.0
+    floor: 0.0
+  - column: 577
+    key: chuck_temp
+    label: Chuck Temperature
+    unit: degC
+    lcl: 55.0
+    ucl: 65.0
+  - column: 576
+    key: bias_voltage
+    label: Bias Voltage
+    unit: V
+    lcl: -320.0
+    ucl: -280.0
+  - column: 574
+    key: match_position_c1
+    label: Match Position C1
+    unit: "%"
+    lcl: 30.0
+    ucl: 70.0
+    floor: 0.0
+    ceiling: 100.0
+  - column: 522
+    key: match_position_c2
+    label: Match Position C2
+    unit: "%"
+    lcl: 30.0
+    ucl: 70.0
+    floor: 0.0
+    ceiling: 100.0
+  - column: 388
+    key: coil_current
+    label: Coil Current
+    unit: A
+    lcl: 18.0
+    ucl: 22.0
+    floor: 0.0
+  - column: 250
+    key: dc_bias
+    label: DC Bias
+    unit: V
+    lcl: -120.0
+    ucl: -80.0
+  - column: 570
+    key: apc_position
+    label: APC Valve Position
+    unit: "%"
+    lcl: 20.0
+    ucl: 80.0
+    floor: 0.0
+    ceiling: 100.0
+  - column: 494
+    key: chamber_wall_temp
+    label: Chamber Wall Temperature
+    unit: degC
+    lcl: 60.0
+    ucl: 80.0
+
+# Signals a scenario perturbs, by root cause. Used by the seeder, never by the agent.
+scenario_signals:
+  recipe_param_drift: [cf4_flow, endpoint_intensity, chamber_pressure]
+  pm_overdue_wear: [rf_reflected_power, match_position_c1, chamber_wall_temp]
+  chamber_leak: [he_leak_rate, chamber_pressure, throttle_valve_angle]
+  sensor_malfunction: [chuck_temp]
+  gas_flow_instability: [cf4_flow, o2_flow]
+  rf_match_degradation: [rf_reflected_power, match_position_c1, match_position_c2]
+  no_fault_false_alarm: []
