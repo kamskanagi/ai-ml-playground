@@ -39,7 +39,9 @@ def database() -> None:
             if not exists:
                 conn.execute(f'CREATE DATABASE "{settings.postgres_db}"')
     except psycopg.OperationalError as exc:  # pragma: no cover - environment dependent
-        pytest.skip(f"Postgres unavailable at {settings.postgres_host}:{settings.postgres_port}: {exc}")
+        pytest.skip(
+            f"Postgres unavailable at {settings.postgres_host}:{settings.postgres_port}: {exc}"
+        )
 
     import asyncio
 
@@ -54,3 +56,14 @@ async def session(database):
 
     async with get_sessionmaker()() as s:
         yield s
+
+
+@pytest.fixture
+async def client(database):
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c

@@ -32,14 +32,18 @@ from app.db.models import (
 )
 from app.db.session import create_all, get_engine, get_sessionmaker
 from app.domain import (
-    Action,
     AlarmCode,
     AlarmStatus,
     EquipmentStatus,
     LotStatus,
     RootCause,
 )
-from app.seed.scenarios import ScenarioPlan, balanced_scenario_cycle, build_plan
+from app.seed.scenarios import (
+    SCENARIO_NAMES,
+    ScenarioPlan,
+    balanced_scenario_cycle,
+    build_plan,
+)
 from app.seed.secom import load_secom, load_signals, signals_by_key
 
 N_LOTS = 120
@@ -123,36 +127,44 @@ RECIPE_SPECS = (
     ),
 )
 
-RESOLUTIONS = {
+RESOLUTION_TEXT = {
     RootCause.RECIPE_PARAM_DRIFT: (
-        "Reverted the recipe parameter to the qualified value and re-centred the process.",
-        Action.HOLD_LOT,
+        "Reverted the recipe parameter to the qualified value and re-centred the process."
     ),
     RootCause.PM_OVERDUE_WEAR: (
-        "Performed overdue PM; replaced focus ring and cleaned the chamber liner.",
-        Action.ESCALATE,
+        "Performed overdue PM; replaced focus ring and cleaned the chamber liner."
     ),
     RootCause.CHAMBER_LEAK: (
-        "Found a degraded slit valve O-ring. Replaced the seal and re-qualified the chamber.",
-        Action.HOLD_LOT,
+        "Found a degraded slit valve O-ring. Replaced the seal and re-qualified the chamber."
     ),
     RootCause.SENSOR_MALFUNCTION: (
-        "Chuck thermocouple had failed open. Replaced the sensor; process was unaffected.",
-        Action.CONTINUE,
+        "Chuck thermocouple had failed open. Replaced the sensor; process was unaffected."
     ),
     RootCause.GAS_FLOW_INSTABILITY: (
-        "MFC was hunting. Recalibrated the controller and verified flow stability.",
-        Action.HOLD_LOT,
+        "MFC was hunting. Recalibrated the controller and verified flow stability."
     ),
     RootCause.RF_MATCH_DEGRADATION: (
-        "Match network vacuum capacitor was failing. Swapped the match unit.",
-        Action.ESCALATE,
+        "Match network vacuum capacitor was failing. Swapped the match unit."
     ),
     RootCause.NO_FAULT_FALSE_ALARM: (
-        "Single transient excursion, no process impact. Tightened the alarm filter.",
-        Action.CONTINUE,
+        "Single transient excursion, no process impact. Tightened the alarm filter."
     ),
 }
+
+
+def canonical_actions() -> dict[str, str]:
+    """Root cause -> action, taken straight from the scenario generators.
+
+    The incident corpus is precedent the agent reads, so an action here that disagrees
+    with the scenario definitions would teach it the wrong answer — and look like a
+    model failure in the eval rather than a data bug. Deriving it removes the drift.
+    """
+    rng = random.Random(0)
+    return {
+        plan.root_cause.value: plan.action.value
+        for plan in (build_plan(name, rng) for name in SCENARIO_NAMES)
+    }
+
 
 INCIDENT_CODES = {
     RootCause.RECIPE_PARAM_DRIFT: AlarmCode.PRESSURE_EXCURSION,
@@ -415,10 +427,12 @@ async def _seed_incidents(
 ) -> None:
     """Closed incidents, so find_similar_incidents has a corpus to search."""
     causes = list(RootCause)
+    actions = canonical_actions()
     rows = []
     for i in range(N_HISTORICAL_INCIDENTS):
         cause = causes[i % len(causes)]
-        resolution, action = RESOLUTIONS[cause]
+        resolution = RESOLUTION_TEXT[cause]
+        action = actions[cause.value]
         rows.append(
             {
                 "alarm_code": INCIDENT_CODES[cause],

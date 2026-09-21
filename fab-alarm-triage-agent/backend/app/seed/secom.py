@@ -148,9 +148,7 @@ def load_secom() -> SecomFrame:
         val_cols[sig.key] = values
         z_cols[sig.key] = values.map(sig.z_of)
 
-    timestamps = pd.to_datetime(
-        labels["timestamp"], format="%d/%m/%Y %H:%M:%S", errors="coerce"
-    )
+    timestamps = pd.to_datetime(labels["timestamp"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
     if timestamps.isna().any():
         raise ValueError(
             f"SECOM label timestamps failed to parse ({int(timestamps.isna().sum())} of "

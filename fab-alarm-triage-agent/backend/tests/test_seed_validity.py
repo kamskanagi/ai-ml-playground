@@ -178,9 +178,9 @@ async def test_sensor_values_and_z_scores_stay_consistent(session):
     by_key = signals_by_key()
     rows = (
         await session.execute(
-            select(
-                SensorReading.signal_key, SensorReading.raw_value, SensorReading.z_score
-            ).limit(3000)
+            select(SensorReading.signal_key, SensorReading.raw_value, SensorReading.z_score).limit(
+                3000
+            )
         )
     ).all()
     assert rows
@@ -212,9 +212,7 @@ async def test_reference_data_is_present(session):
     assert await session.scalar(select(func.count()).select_from(PmEvent)) > 0
     causes = set(
         (
-            await session.execute(
-                text("SELECT DISTINCT root_cause_category FROM incidents")
-            )
+            await session.execute(text("SELECT DISTINCT root_cause_category FROM incidents"))
         ).scalars()
     )
     assert causes == {c.value for c in RootCause}, "incident corpus must cover every root cause"
@@ -224,3 +222,35 @@ async def test_actions_are_from_the_fixed_vocabulary(session):
     actions = set((await session.execute(select(func.distinct(Alarm.truth_action)))).scalars())
     assert actions <= {a.value for a in Action}
     assert len(actions) == 3, "all three dispositions should be exercised"
+
+
+async def test_incident_precedent_agrees_with_scenario_truth(session):
+    """The incident corpus is precedent the agent reads.
+
+    If a past incident records a different action than the scenario definition for the
+    same root cause, the agent is being taught the wrong answer — and the eval would
+    read that as a model failure rather than a data bug.
+    """
+    from app.seed.seed import canonical_actions
+
+    expected = canonical_actions()
+    rows = (
+        await session.execute(
+            text("SELECT DISTINCT root_cause_category, action_taken FROM incidents")
+        )
+    ).all()
+    assert rows
+    for cause, action in rows:
+        assert action == expected[cause], f"incident says {cause} -> {action}"
+
+
+async def test_alarm_truth_agrees_with_scenario_definitions(session):
+    """Same check on the other side: seeded alarms must match the generators."""
+    from app.seed.seed import canonical_actions
+
+    expected = canonical_actions()
+    rows = (
+        await session.execute(select(Alarm.truth_root_cause, Alarm.truth_action).distinct())
+    ).all()
+    for cause, action in rows:
+        assert action == expected[cause], f"alarm says {cause} -> {action}"

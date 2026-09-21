@@ -23,8 +23,16 @@ down: ## Stop the stack
 logs: ## Tail backend logs
 	$(COMPOSE) logs -f backend
 
-seed: ## Load SECOM and generate the mock MES
+seed: ## Load SECOM and generate the mock MES (inside the container)
 	$(COMPOSE) exec backend python -m app.seed.seed
+
+LOCAL_ENV := POSTGRES_HOST=localhost POSTGRES_PORT=5433 PYTHONPATH=backend
+
+seed-local: ## Seed from the host venv against the compose Postgres
+	$(LOCAL_ENV) $(PY) -m app.seed.seed
+
+dev: ## Run the API from the host venv with reload
+	$(LOCAL_ENV) $(PY) -m uvicorn app.main:app --reload --port 8000
 
 test: ## Run backend tests
 	cd backend && ../.venv/bin/python -m pytest -q
