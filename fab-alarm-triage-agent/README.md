@@ -71,6 +71,21 @@ Three properties are deliberate and worth preserving:
 
 ## Incident runbook
 
+### Backend pods are in CrashLoopBackOff right after a first deploy
+
+Expected, and self-healing. The backend creates its tables at startup, so it exits if Postgres
+is not accepting connections yet, and Kubernetes restarts it until the database is up. On a
+fresh cluster this is typically three or four restarts.
+
+```bash
+kubectl -n fab-triage get pods
+kubectl -n fab-triage logs -l app=backend --tail=20 | grep -i "resolve host\|OperationalError"
+```
+
+`failed to resolve host 'postgres'` is the harmless version. Only investigate if the restart
+count keeps climbing *after* `postgres-0` reports Ready — that points at credentials or the
+ConfigMap rather than ordering.
+
 ### A triage run is stuck in `running`
 
 The agent is still working, or it died mid-investigation. Runs do not time out on their own.

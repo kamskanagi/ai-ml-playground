@@ -109,10 +109,14 @@ jobs:
       - name: Validate manifests
         # Server-side dry run against a throwaway cluster catches schema errors that
         # `kubectl kustomize` alone will happily render.
+        #
+        # The namespace is created first: a server-side dry run of namespaced resources
+        # fails with "namespaces not found" if it only exists in the same dry run.
         run: |
           curl -sSLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
           chmod +x /usr/local/bin/kind
           kind create cluster --name ci --wait 120s
+          kubectl create namespace fab-triage
           kubectl kustomize k8s/overlays/dev | kubectl apply --dry-run=server -f -
 
   e2e:

@@ -1,0 +1,9 @@
+# The SECOM cache is downloaded at runtime by app.seed.secom; baking a copy in would
+# ship a stale dataset and add 7MB to every layer.
+app/seed/.cache
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+tests
