@@ -1,19 +1,23 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { Engineer } from './core/engineer';
 
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, FormsModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule],
   template: `
     <header class="bar">
       <a routerLink="/alarms" class="brand">
         <span class="mark"></span>
         Etch bay triage
       </a>
+      <nav>
+        <a routerLink="/alarms" routerLinkActive="on">Queue</a>
+        <a routerLink="/metrics" routerLinkActive="on">How it's doing</a>
+      </nav>
       <label class="who">
         Signed in as
         <select [ngModel]="engineer.name()" (ngModelChange)="engineer.choose($event)">
@@ -55,6 +59,15 @@ import { Engineer } from './core/engineer';
         border-radius: 50%;
         box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 4px var(--escalate);
       }
+      nav { display: flex; gap: 16px; margin-right: auto; margin-left: 28px; }
+      nav a {
+        font-size: 13.5px;
+        text-decoration: none;
+        color: var(--muted);
+        padding-bottom: 2px;
+        border-bottom: 2px solid transparent;
+      }
+      nav a.on { color: var(--ink); border-bottom-color: var(--escalate); }
       .who { font-size: 12px; color: var(--muted); }
       select {
         font-family: inherit;

@@ -143,3 +143,38 @@ export const ACTION_LABEL: Record<Action, string> = {
   continue: 'Continue',
   escalate: 'Escalate',
 };
+
+export interface EvalReport {
+  model: string;
+  n: number;
+  action_accuracy: number;
+  cause_accuracy: number;
+  macro_f1: number;
+  ambiguous_accuracy: number;
+  ambiguous_n: number;
+  unsafe_continue_rate: number;
+  unsafe_continue_count: number;
+  missed_hold_rate: number;
+  evidence_citation_rate: number;
+  mean_confidence: number;
+  mean_tool_calls: number;
+  mean_latency_ms: number;
+  fallback_rate: number;
+  error_count: number;
+  confusion: Record<string, Record<string, number>>;
+  per_scenario: Record<string, { n: number; action_accuracy: number; cause_accuracy: number }>;
+}
+
+export interface LiveAgreement {
+  decided: number;
+  pending: number;
+  approved: number;
+  edited: number;
+  rejected: number;
+  agreement_rate: number | null;
+}
+
+export interface Metrics {
+  report: EvalReport | null;
+  live: LiveAgreement;
+}

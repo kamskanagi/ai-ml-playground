@@ -11,5 +11,9 @@ export const routes: Routes = [
     // `withComponentInputBinding` maps the :id segment onto the component's input.
     loadComponent: () => import('./features/detail/detail').then((m) => m.Detail),
   },
+  {
+    path: 'metrics',
+    loadComponent: () => import('./features/metrics/metrics').then((m) => m.MetricsPage),
+  },
   { path: '**', redirectTo: 'alarms' },
 ];

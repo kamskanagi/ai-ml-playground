@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import mes, triage
+from app.api.routes import mes, metrics, triage
 from app.config import get_settings
 from app.db.session import create_all
 
@@ -37,6 +37,7 @@ app.add_middleware(
 
 app.include_router(mes.router)
 app.include_router(triage.router)
+app.include_router(metrics.router)
 
 
 @app.get("/health", tags=["ops"])

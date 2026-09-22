@@ -7,6 +7,7 @@ import {
   AgentRun,
   AgentStep,
   AlarmDetail,
+  Metrics,
   ReviewRequest,
   SignalTrace,
   TriageStarted,
@@ -45,6 +46,10 @@ export class Api {
 
   trace(runId: number): Observable<AgentStep[]> {
     return this.http.get<AgentStep[]>(`${this.base}/agent-runs/${runId}/trace`);
+  }
+
+  metrics(): Observable<Metrics> {
+    return this.http.get<Metrics>(`${this.base}/metrics/eval`);
   }
 
   review(runId: number, body: ReviewRequest): Observable<AgentRun> {

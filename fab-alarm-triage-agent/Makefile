@@ -37,6 +37,13 @@ dev: ## Run the API from the host venv with reload
 mcp-local: ## Run the MCP server from the host venv (needs the API on :8000)
 	BACKEND_URL=http://localhost:8000 $(PY) mcp_server/server.py
 
+eval: ## Score the agent on the held-out alarms (needs GROQ_API_KEY)
+	$(LOCAL_ENV) $(PY) -m app.eval.run --predictor agent
+
+eval-baseline: ## Score the lookup-table baseline — the bar the agent must clear
+	$(LOCAL_ENV) $(PY) -m app.eval.run --predictor baseline-majority-by-code
+	$(LOCAL_ENV) $(PY) -m app.eval.run --predictor baseline-always-escalate
+
 ui: ## Run the dashboard dev server (proxies /api to :8000)
 	cd frontend && npx ng serve
 
