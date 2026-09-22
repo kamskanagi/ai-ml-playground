@@ -13,7 +13,9 @@ interface Plotted {
 
 const W = 680;
 const H = 190;
-const PAD = { left: 56, right: 78, top: 18, bottom: 26 };
+// `right` must hold the reading callout ("2.67" over "sccm · +5.00σ"), not just the
+// plot. Sized to the longest unit-and-sigma line so it never clips at the card edge.
+const PAD = { left: 56, right: 108, top: 18, bottom: 26 };
 
 /** An SPC control chart for one signal.
  *
