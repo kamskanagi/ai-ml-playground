@@ -20,7 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.models import (
+    AgentRun,
+    AgentStep,
     Alarm,
+    Disposition,
     Equipment,
     Incident,
     Lot,
@@ -192,8 +195,15 @@ class RunRow:
 
 
 async def _reset(session: AsyncSession) -> None:
-    """Clear seeded data. Order matters: children before parents."""
+    """Clear seeded data. Order matters: children before parents.
+
+    Agent tables are included: a database that has had triage run against it holds
+    agent_runs referencing alarms, and deleting alarms first fails on the foreign key.
+    """
     for model in (
+        AgentStep,
+        Disposition,
+        AgentRun,
         SensorReading,
         Alarm,
         Incident,

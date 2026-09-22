@@ -238,7 +238,9 @@ class Disposition(Base):
 
     # What the agent proposed.
     recommended_action: Mapped[str] = mapped_column(String(16))
-    root_cause_category: Mapped[str] = mapped_column(String(32))
+    # Nullable: when the model cannot produce a valid structured answer the agent
+    # falls back to escalate with no cause, which is honest rather than invented.
+    root_cause_category: Mapped[str | None] = mapped_column(String(32), nullable=True)
     confidence: Mapped[float] = mapped_column(Float)
     hypothesis: Mapped[str] = mapped_column(Text)
     evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)

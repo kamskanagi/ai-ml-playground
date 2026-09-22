@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import mes
+from app.api.routes import mes, triage
 from app.config import get_settings
 from app.db.session import create_all
 
@@ -14,6 +14,10 @@ from app.db.session import create_all
 async def lifespan(app: FastAPI):
     await create_all()
     yield
+    # The checkpointer holds a connection pool; close it so shutdown is clean.
+    from app.agent.runtime import close_checkpointer
+
+    await close_checkpointer()
 
 
 app = FastAPI(
@@ -32,6 +36,7 @@ app.add_middleware(
 
 
 app.include_router(mes.router)
+app.include_router(triage.router)
 
 
 @app.get("/health", tags=["ops"])

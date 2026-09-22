@@ -67,3 +67,18 @@ async def client(database):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+async def _close_agent_runtime():
+    """Tear down the checkpointer between tests.
+
+    Its connection pool starts background tasks bound to the running event loop, and
+    pytest-asyncio gives each test a fresh loop — a pool held over from a previous test
+    hangs rather than failing.
+    """
+    yield
+    from app.agent import runtime
+
+    await runtime.close_checkpointer()
+    runtime.reset()
