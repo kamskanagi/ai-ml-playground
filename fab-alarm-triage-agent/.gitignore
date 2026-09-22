@@ -24,5 +24,11 @@ frontend/.angular/
 eval/reports/*.json
 eval/reports/*.md
 
+# Docs and prose live here for working purposes but are not tracked:
+# the tutorial series is published on labskaramind.com instead.
+docs/
+*.md
+!README.md
+
 # OS
 .DS_Store
