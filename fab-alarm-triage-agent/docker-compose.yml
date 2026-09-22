@@ -50,5 +50,14 @@ services:
       backend:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_HOST_PORT:-4200}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   pgdata:

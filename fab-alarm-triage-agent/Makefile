@@ -37,13 +37,18 @@ dev: ## Run the API from the host venv with reload
 mcp-local: ## Run the MCP server from the host venv (needs the API on :8000)
 	BACKEND_URL=http://localhost:8000 $(PY) mcp_server/server.py
 
+ui: ## Run the dashboard dev server (proxies /api to :8000)
+	cd frontend && npx ng serve
+
 test: ## Run all tests
 	cd backend && ../.venv/bin/python -m pytest -q
 	cd mcp_server && ../.venv/bin/python -m pytest -q
+	cd frontend && npx ng test --watch=false
 
 lint: ## Lint and type-check
 	./.venv/bin/ruff check backend mcp_server
 	./.venv/bin/ruff format --check backend mcp_server
+	cd frontend && npx tsc --noEmit -p tsconfig.app.json
 
 fmt: ## Auto-format
 	./.venv/bin/ruff format backend mcp_server

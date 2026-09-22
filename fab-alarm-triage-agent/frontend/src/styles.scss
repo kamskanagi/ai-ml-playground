@@ -1,0 +1,116 @@
+/* Design tokens.
+ *
+ * Every colour here is semantic: it says whether a reading is in or out of control, or
+ * which of the three dispositions applies. Nothing is coloured for decoration, because on
+ * this screen colour is how an engineer reads state at a glance.
+ */
+
+:root {
+  /* Surfaces — a cool blueprint grey, not a neutral one: the page reads as instrument
+     paper rather than as a generic admin panel. */
+  --ground: #edf1f3;
+  --surface: #ffffff;
+  --sunken: #e2e9ec;
+  --ink: #16242b;
+  --muted: #5e727c;
+  --line: #c6d5db;
+  --grid: #d8e3e7;
+
+  /* Process state */
+  --limit: #c0392b;       /* outside control limits */
+  --nominal: #1f7a6b;     /* in control */
+
+  /* Dispositions */
+  --hold: #b8860b;
+  --continue: #1f7a6b;
+  --escalate: #d4511e;
+
+  /* Severity */
+  --sev-low: #5e727c;
+  --sev-medium: #b8860b;
+  --sev-high: #d4511e;
+  --sev-critical: #c0392b;
+
+  --display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius: 3px;
+  --gutter: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ground: #0e1619;
+    --surface: #17252b;
+    --sunken: #1e2f36;
+    --ink: #e3edf1;
+    --muted: #94a9b2;
+    --line: #2d444d;
+    --grid: #24373f;
+    --limit: #e8614e;
+    --nominal: #3fbfa6;
+    --hold: #e0a82e;
+    --continue: #3fbfa6;
+    --escalate: #ff7a45;
+    --sev-low: #94a9b2;
+    --sev-medium: #e0a82e;
+    --sev-high: #ff7a45;
+    --sev-critical: #e8614e;
+  }
+}
+
+:root[data-theme='dark'] {
+  --ground: #0e1619;
+  --surface: #17252b;
+  --sunken: #1e2f36;
+  --ink: #e3edf1;
+  --muted: #94a9b2;
+  --line: #2d444d;
+  --grid: #24373f;
+  --limit: #e8614e;
+  --nominal: #3fbfa6;
+  --hold: #e0a82e;
+  --continue: #3fbfa6;
+  --escalate: #ff7a45;
+  --sev-low: #94a9b2;
+  --sev-medium: #e0a82e;
+  --sev-high: #ff7a45;
+  --sev-critical: #e8614e;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+
+a { color: inherit; }
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--escalate);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Numbers line up in columns everywhere on this screen. */
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
