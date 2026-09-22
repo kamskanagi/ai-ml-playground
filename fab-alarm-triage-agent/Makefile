@@ -11,8 +11,8 @@ help: ## Show this help
 venv: ## Create the local virtualenv
 	python3 -m venv .venv && $(PIP) install --upgrade pip
 
-install: venv ## Install backend deps (editable, with dev extras)
-	$(PIP) install -e "backend[dev]"
+install: venv ## Install backend and MCP deps (editable, with dev extras)
+	$(PIP) install -e "backend[dev]" -e "mcp_server[dev]"
 
 up: ## Start the stack
 	$(COMPOSE) up -d --build
@@ -34,16 +34,20 @@ seed-local: ## Seed from the host venv against the compose Postgres
 dev: ## Run the API from the host venv with reload
 	$(LOCAL_ENV) $(PY) -m uvicorn app.main:app --reload --port 8000
 
-test: ## Run backend tests
+mcp-local: ## Run the MCP server from the host venv (needs the API on :8000)
+	BACKEND_URL=http://localhost:8000 $(PY) mcp_server/server.py
+
+test: ## Run all tests
 	cd backend && ../.venv/bin/python -m pytest -q
+	cd mcp_server && ../.venv/bin/python -m pytest -q
 
 lint: ## Lint and type-check
-	./.venv/bin/ruff check backend
-	./.venv/bin/ruff format --check backend
+	./.venv/bin/ruff check backend mcp_server
+	./.venv/bin/ruff format --check backend mcp_server
 
 fmt: ## Auto-format
-	./.venv/bin/ruff format backend
-	./.venv/bin/ruff check --fix backend
+	./.venv/bin/ruff format backend mcp_server
+	./.venv/bin/ruff check --fix backend mcp_server
 
 psql: ## Open a psql shell
 	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-fab} -d $${POSTGRES_DB:-fab_mes}

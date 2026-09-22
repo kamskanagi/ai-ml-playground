@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fab-mes": {
+      "type": "http",
+      "url": "http://localhost:9000/mcp"
+    }
+  }
+}

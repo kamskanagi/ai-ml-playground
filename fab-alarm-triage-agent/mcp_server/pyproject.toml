@@ -1,0 +1,30 @@
+[project]
+name = "fab-alarm-triage-mcp"
+version = "0.1.0"
+description = "MCP server exposing the mock MES as read-only tools"
+requires-python = ">=3.12"
+dependencies = [
+    # Pinned below 2.0 to match langchain-mcp-adapters, which the agent uses to consume
+    # this server and requires mcp<2. The v2 SDK renames FastMCP to MCPServer and moves
+    # transport arguments to run(), so moving up is a code change, not just a bump.
+    "mcp>=1.24,<2",
+    "httpx>=0.28",
+    "pydantic>=2.12,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "respx>=0.22", "ruff>=0.9"]
+
+[tool.setuptools]
+py-modules = ["server"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
