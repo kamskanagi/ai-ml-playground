@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# One backend replica locally: kind runs on a laptop, and the two-replica behaviour is
+# exercised deliberately by the pod-kill check in the runbook rather than all the time.
+patches:
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1

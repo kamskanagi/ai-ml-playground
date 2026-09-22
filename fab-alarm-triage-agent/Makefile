@@ -6,7 +6,7 @@ PIP := ./.venv/bin/pip
 .PHONY: help venv install up down logs seed test lint fmt shell psql clean
 
 help: ## Show this help
-	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
 venv: ## Create the local virtualenv
 	python3 -m venv .venv && $(PIP) install --upgrade pip
@@ -60,6 +60,48 @@ lint: ## Lint and type-check
 fmt: ## Auto-format
 	./.venv/bin/ruff format backend mcp_server
 	./.venv/bin/ruff check --fix backend mcp_server
+
+# --- kubernetes -----------------------------------------------------------
+
+KIND_CLUSTER := fab-triage
+K8S_NS := fab-triage
+
+kind-up: ## Create the local kind cluster with an ingress controller
+	kind create cluster --config k8s/kind-config.yaml --wait 180s
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
+	kubectl -n ingress-nginx wait --for=condition=ready pod \
+		--selector=app.kubernetes.io/component=controller --timeout=180s
+
+kind-down: ## Delete the kind cluster
+	kind delete cluster --name $(KIND_CLUSTER)
+
+images: ## Build and load images into kind
+	docker build -t fab-triage/backend:dev backend
+	docker build -t fab-triage/mcp:dev mcp_server
+	docker build -t fab-triage/frontend:dev frontend
+	kind load docker-image --name $(KIND_CLUSTER) \
+		fab-triage/backend:dev fab-triage/mcp:dev fab-triage/frontend:dev
+
+k8s-deploy: images ## Deploy to the kind cluster
+	kubectl apply -k k8s/overlays/dev
+	kubectl -n $(K8S_NS) rollout status statefulset/postgres --timeout=180s
+	kubectl -n $(K8S_NS) rollout status deployment/backend --timeout=180s
+	kubectl -n $(K8S_NS) rollout status deployment/mcp --timeout=120s
+	kubectl -n $(K8S_NS) rollout status deployment/frontend --timeout=120s
+
+k8s-seed: ## Seed the in-cluster database
+	kubectl -n $(K8S_NS) exec deploy/backend -- python -m app.seed.seed
+
+k8s-status: ## What is running
+	kubectl -n $(K8S_NS) get pods,svc,ingress
+
+k8s-logs: ## Tail backend logs in the cluster
+	kubectl -n $(K8S_NS) logs -l app=backend --tail=100 -f
+
+smoke: ## Check the deployed stack answers
+	kubectl -n $(K8S_NS) exec deploy/backend -- \
+		python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/ready').read().decode())"
+	curl -fsS http://localhost:8081/api/alarms?limit=3 | head -c 200; echo
 
 psql: ## Open a psql shell
 	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-fab} -d $${POSTGRES_DB:-fab_mes}

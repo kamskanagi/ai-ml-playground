@@ -1,0 +1,160 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['fab-alarm-triage-agent/**']
+  pull_request:
+    paths: ['fab-alarm-triage-agent/**']
+
+defaults:
+  run:
+    working-directory: fab-alarm-triage-agent
+
+env:
+  PYTHON_VERSION: '3.13'
+  NODE_VERSION: '22'
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    # The suite needs a real Postgres: the durability tests resume a paused graph from
+    # checkpoints, which is the behaviour most worth protecting and cannot be faked.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fab
+          POSTGRES_PASSWORD: fab
+          POSTGRES_DB: fab_mes
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fab -d fab_mes"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: '5432'
+      PYTHONPATH: backend
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e "backend[dev]" -e "mcp_server[dev]"
+
+      - name: Lint
+        run: |
+          ruff check backend mcp_server
+          ruff format --check backend mcp_server
+
+      - name: Backend tests
+        run: cd backend && python -m pytest -q
+
+      - name: MCP tests
+        run: cd mcp_server && python -m pytest -q
+
+      - name: Baseline evaluation
+        # Runs without an API key and fails if the dataset ever becomes solvable by a
+        # lookup table — the guard on every accuracy figure this project reports.
+        run: |
+          python -m app.seed.seed
+          python -m app.eval.run --predictor baseline-majority-by-code --out /tmp/reports
+          python - <<'PY'
+          import json, sys
+          report = json.load(open('/tmp/reports/latest.json'))
+          print(f"baseline ambiguous accuracy: {report['ambiguous_accuracy']:.1%}")
+          if report['ambiguous_accuracy'] > 0.75:
+              sys.exit("A lookup table solves the ambiguous cases; the eval set has a leak.")
+          PY
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: fab-alarm-triage-agent/frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: fab-alarm-triage-agent/frontend
+      - run: npx tsc --noEmit -p tsconfig.app.json
+        working-directory: fab-alarm-triage-agent/frontend
+      - run: npx ng test --watch=false
+        working-directory: fab-alarm-triage-agent/frontend
+      - run: npx ng build
+        working-directory: fab-alarm-triage-agent/frontend
+
+  images:
+    name: Images and manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: |
+          docker build -t fab-triage/backend:ci backend
+          docker build -t fab-triage/mcp:ci mcp_server
+          docker build -t fab-triage/frontend:ci frontend
+
+      - name: Validate manifests
+        # Server-side dry run against a throwaway cluster catches schema errors that
+        # `kubectl kustomize` alone will happily render.
+        run: |
+          curl -sSLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+          chmod +x /usr/local/bin/kind
+          kind create cluster --name ci --wait 120s
+          kubectl kustomize k8s/overlays/dev | kubectl apply --dry-run=server -f -
+
+  e2e:
+    name: End-to-end on kind
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, images]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create cluster
+        run: |
+          curl -sSLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+          chmod +x /usr/local/bin/kind
+          kind create cluster --config k8s/kind-config.yaml --wait 180s
+
+      - name: Build and load images
+        run: |
+          docker build -t fab-triage/backend:dev backend
+          docker build -t fab-triage/mcp:dev mcp_server
+          docker build -t fab-triage/frontend:dev frontend
+          kind load docker-image --name fab-triage \
+            fab-triage/backend:dev fab-triage/mcp:dev fab-triage/frontend:dev
+
+      - name: Deploy
+        run: |
+          kubectl apply -k k8s/overlays/dev
+          kubectl -n fab-triage rollout status statefulset/postgres --timeout=180s
+          kubectl -n fab-triage rollout status deployment/backend --timeout=180s
+          kubectl -n fab-triage rollout status deployment/mcp --timeout=120s
+          kubectl -n fab-triage rollout status deployment/frontend --timeout=120s
+
+      - name: Seed and smoke test
+        run: |
+          kubectl -n fab-triage exec deploy/backend -- python -m app.seed.seed
+          kubectl -n fab-triage port-forward svc/backend 8000:8000 &
+          sleep 5
+          curl -fsS http://localhost:8000/ready
+          test "$(curl -fsS 'http://localhost:8000/api/alarms?limit=5' | python -c 'import sys,json;print(len(json.load(sys.stdin)))')" = "5"
+
+      - name: Diagnose on failure
+        if: failure()
+        run: |
+          kubectl -n fab-triage get pods -o wide
+          kubectl -n fab-triage describe pods
+          kubectl -n fab-triage logs -l app=backend --tail=100 || true
