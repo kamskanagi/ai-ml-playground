@@ -8,9 +8,20 @@ venv/
 .ruff_cache/
 .mypy_cache/
 
-# Env
+# Environment files — never commit real ones. `.env.*` catches every variant
+# (.env.local, .env.production, ...); the negation keeps the documented template.
 .env
-.env.local
+.env.*
+!.env.example
+*.env
+
+# Secrets that must never be tracked, whatever they are named
+*.pem
+*.key
+*_rsa
+kubeconfig
+secrets.yaml
+!k8s/base/kustomization.yaml
 
 # Data cache (SECOM is downloaded, not vendored)
 backend/app/seed/.cache/

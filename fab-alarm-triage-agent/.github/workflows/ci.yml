@@ -16,6 +16,39 @@ env:
   NODE_VERSION: '22'
 
 jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: No .env files may be tracked
+        run: |
+          tracked=$(git ls-files | grep -iE '(^|/)\.env' | grep -vE '\.example$|_example$' || true)
+          if [ -n "$tracked" ]; then
+            echo "These .env files are tracked and must not be:"
+            echo "$tracked"
+            exit 1
+          fi
+          echo "No .env files tracked."
+
+      - name: No credential-shaped strings in tracked files
+        # Prefixes only, so this cannot itself leak anything. Exclusions: the .env
+        # template documents variable names with empty values, and this workflow
+        # contains the patterns themselves and would otherwise match itself.
+        run: |
+          hits=$(git grep -nIE \
+            '(gsk_|sk-[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[baprs]-)[A-Za-z0-9_-]*' \
+            -- . ':!*.example' ':!*/node_modules/*' ':!.github/workflows/ci.yml' || true)
+          if [ -n "$hits" ]; then
+            echo "Possible credentials in tracked files:"
+            echo "$hits" | cut -c1-120
+            exit 1
+          fi
+          echo "No credential-shaped strings found."
+
   backend:
     name: Backend
     runs-on: ubuntu-latest

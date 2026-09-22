@@ -32,6 +32,22 @@ open http://localhost:4200
 Triage needs a model. Copy `.env.example` to `.env` and set `GROQ_API_KEY`; without one the
 dashboard and API work fully, but "Run triage" cannot reach a model.
 
+## Secrets
+
+`.env` and every variant (`.env.local`, `.env.production`, …) are gitignored, along with `*.pem`,
+`*.key` and `kubeconfig`. Only `.env.example` is tracked, and it holds variable names with empty
+values — never a real key.
+
+In Kubernetes, `GROQ_API_KEY` is empty in `k8s/base/kustomization.yaml` by design. Supply it at
+deploy time rather than committing it:
+
+```bash
+kubectl -n fab-triage create secret generic fab-secrets   --from-literal=POSTGRES_PASSWORD='...'   --from-literal=GROQ_API_KEY='...'   --dry-run=client -o yaml | kubectl apply -f -
+```
+
+CI enforces both rules on every build: it fails if any `.env` file becomes tracked, or if a
+credential-shaped string appears in a tracked file.
+
 ## Commands
 
 ```bash
