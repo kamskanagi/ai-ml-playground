@@ -36,8 +36,22 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+# Any constant works as long as every replica uses the same one.
+_CREATE_ALL_LOCK_ID = 0x7FAB7121
+
+
 async def create_all() -> None:
-    """Create MES tables. LangGraph's checkpoint tables are created separately by
-    `AsyncPostgresSaver.setup()` — see app.agent.checkpointer."""
+    """Create MES tables, one replica at a time.
+
+    `create_all` reflects and then issues a bare CREATE TABLE, so two replicas starting
+    together can both decide a table is missing and the loser crashes with "relation
+    already exists" — failing its lifespan and crash-looping. A session-level advisory
+    lock serialises them; it is released when the connection closes.
+
+    LangGraph's checkpoint tables are created separately by `AsyncPostgresSaver.setup()`.
+    """
+    from sqlalchemy import text
+
     async with get_engine().begin() as conn:
+        await conn.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _CREATE_ALL_LOCK_ID})
         await conn.run_sync(Base.metadata.create_all)

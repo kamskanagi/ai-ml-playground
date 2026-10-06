@@ -3,7 +3,7 @@
 Every model lists its fields explicitly. `Alarm` carries ground-truth columns
 (`truth_root_cause`, `truth_action`, `scenario`, `is_eval_case`) that the agent must
 never see; declaring fields by hand rather than dumping the ORM model is what keeps
-them out. `tests/test_no_ground_truth_leak.py` enforces it.
+them out. `tests/test_api_mes.py::test_no_endpoint_leaks_ground_truth` enforces it.
 """
 
 from __future__ import annotations

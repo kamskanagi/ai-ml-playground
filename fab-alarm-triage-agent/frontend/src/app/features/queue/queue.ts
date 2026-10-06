@@ -139,7 +139,9 @@ const SEVERITY_ORDER: Record<Severity, number> = {
 export class Queue {
   private api = inject(Api);
 
-  protected readonly alarms = toSignal(this.api.alarms());
+  // Ask for open alarms specifically: the backend only filters when a status is given,
+  // so omitting it returned triaged alarms too and the count read "N open" wrongly.
+  protected readonly alarms = toSignal(this.api.alarms('open'));
 
   protected readonly open = computed(() => {
     const rows = this.alarms() ?? [];

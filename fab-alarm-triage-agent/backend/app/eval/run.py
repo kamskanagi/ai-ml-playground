@@ -27,7 +27,12 @@ from app.db.session import get_engine, get_sessionmaker
 from app.eval.metrics import CaseResult, score, to_markdown
 from app.eval.predictors import AlwaysEscalate, MajorityByCode, Predictor, TriageAgent
 
-DEFAULT_OUT = Path(__file__).resolve().parents[3] / "eval" / "reports"
+
+def default_out() -> Path:
+    """Must match where the metrics endpoint reads from."""
+    from app.services.metrics import reports_dir
+
+    return reports_dir()
 
 
 async def load_cases(session, limit: int | None = None) -> list[Alarm]:
@@ -61,13 +66,19 @@ async def evaluate(predictor_name: str, limit: int | None, out_dir: Path) -> dic
 
         print(f"Scoring {len(cases)} held-out alarms with {predictor.name}\n")
         for i, alarm in enumerate(cases, 1):
+            # Snapshot before predicting: a predictor may run the graph, which touches
+            # the database on other sessions, and an ORM row read afterwards can no
+            # longer be relied on.
+            case = {
+                "alarm_id": alarm.id,
+                "alarm_code": alarm.alarm_code,
+                "scenario": alarm.scenario or "unknown",
+                "expected_action": alarm.truth_action or "",
+                "expected_root_cause": alarm.truth_root_cause or "",
+            }
             prediction = await predictor.predict(session, alarm)
             result = CaseResult(
-                alarm_id=alarm.id,
-                alarm_code=alarm.alarm_code,
-                scenario=alarm.scenario or "unknown",
-                expected_action=alarm.truth_action or "",
-                expected_root_cause=alarm.truth_root_cause or "",
+                **case,
                 predicted_action=prediction.action,
                 predicted_root_cause=prediction.root_cause,
                 confidence=prediction.confidence,
@@ -81,7 +92,7 @@ async def evaluate(predictor_name: str, limit: int | None, out_dir: Path) -> dic
             mark = "ok " if result.action_correct else "MISS"
             note = f"  [{prediction.error}]" if prediction.error else ""
             print(
-                f"  {i:>3}/{len(cases)}  {mark}  {alarm.alarm_code:<19} "
+                f"  {i:>3}/{len(cases)}  {mark}  {case['alarm_code']:<19} "
                 f"expected={result.expected_action:<9} got={result.predicted_action}{note}"
             )
 
@@ -109,10 +120,10 @@ def main() -> None:
         choices=["agent", "baseline-majority-by-code", "baseline-always-escalate"],
     )
     parser.add_argument("--limit", type=int, default=None, help="score only the first N cases")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
-    asyncio.run(evaluate(args.predictor, args.limit, args.out))
+    asyncio.run(evaluate(args.predictor, args.limit, args.out or default_out()))
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ answer escalates rather than waving the lot through.
 from __future__ import annotations
 
 import pytest
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -385,3 +385,53 @@ async def test_a_missing_alarm_still_produces_a_reviewable_run():
     assert "__interrupt__" in result
     opening = "\n".join(str(m.content) for m in llm.prompts_seen[0])
     assert "Could not load the alarm" in opening
+
+
+async def test_every_tool_call_is_answered_even_when_the_budget_runs_out():
+    """A real provider rejects an assistant tool-call message with no results.
+
+    The stub model does not validate message shape, so hitting the cap used to leave a
+    dangling tool_calls message that only failed against ChatGroq — a 400 that turned the
+    safety cap into a failed run. This asserts the shape the provider requires.
+
+    Each call gets a distinct id, because reusing one id makes "every id was answered"
+    true by accident no matter what the graph does.
+    """
+    counter = iter(range(100))
+
+    def wants_tools():
+        return AIMessage(
+            content="",
+            tool_calls=[
+                {"name": "get_sensor_trace", "args": {"run_id": 1}, "id": f"call-{next(counter)}"}
+            ],
+        )
+
+    # Exactly as many tool requests as `investigate` makes: cap + 1, the last of which
+    # is the one that overruns the budget. Anything beyond that would be answered by
+    # `hypothesize` instead, which is a different node and a different question.
+    llm = StubChatModel(
+        script=[wants_tools() for _ in range(3)],
+        structured_script=[GOOD_DISPOSITION],
+    )
+    graph = build(
+        llm,
+        tools=[
+            make_tool("get_alarm", ALARM_PAYLOAD),
+            make_tool("get_sensor_trace", {"signals": []}),
+        ],
+        cap=2,
+    )
+    result = await graph.ainvoke(start_state(), {"configurable": {"thread_id": "answered-1"}})
+
+    requested: list[str] = []
+    answered: set[str] = set()
+    for message in result["messages"]:
+        for call in getattr(message, "tool_calls", None) or []:
+            requested.append(call["id"])
+        if isinstance(message, ToolMessage):
+            answered.add(message.tool_call_id)
+
+    assert len(requested) > 2, "the cap should have been reached in this scenario"
+    unanswered = [c for c in requested if c not in answered]
+    assert not unanswered, f"tool calls left without results: {unanswered}"

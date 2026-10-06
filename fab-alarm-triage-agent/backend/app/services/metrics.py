@@ -19,15 +19,26 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db.models import Disposition
 from app.domain import DispositionStatus
 
-REPORTS_DIR = Path(__file__).resolve().parents[3] / "eval" / "reports"
+DEFAULT_REPORTS_DIR = Path(__file__).resolve().parents[3] / "eval" / "reports"
 
 
-def load_latest_report(reports_dir: Path | None = None) -> dict[str, Any] | None:
+def reports_dir() -> Path:
+    """Where eval reports live.
+
+    Settable because the default resolves to the repo in a checkout but to "/" inside
+    the image, where it is neither writable by the app user nor shared with the runner.
+    """
+    configured = get_settings().eval_reports_dir
+    return Path(configured) if configured else DEFAULT_REPORTS_DIR
+
+
+def load_latest_report(reports_dir_override: Path | None = None) -> dict[str, Any] | None:
     """The most recent eval run, or None if the harness has never been run."""
-    directory = reports_dir or REPORTS_DIR
+    directory = reports_dir_override or reports_dir()
     latest = directory / "latest.json"
     if not latest.exists():
         return None

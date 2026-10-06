@@ -1,6 +1,8 @@
 """Build the mock MES from SECOM, then plant labelled fault scenarios on top of it.
 
-    python -m app.seed.seed [--reset]
+    python -m app.seed.seed
+
+Destructive: every run clears the seeded tables first.
 
 Two disjoint alarm sets are produced from two seeds: a demo set the dashboard shows,
 and a held-out eval set. They never share a target run.
@@ -700,13 +702,16 @@ def _claim_target(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Seed the mock MES from SECOM.")
-    parser.add_argument(
-        "--keep", action="store_true", help="append instead of clearing existing rows"
+    parser = argparse.ArgumentParser(
+        description="Seed the mock MES from SECOM. Destructive: clears existing rows."
     )
-    args = parser.parse_args()
+    parser.parse_args()
 
-    counts = asyncio.run(seed(reset=not args.keep))
+    # Seeding is always destructive. An append mode was advertised and removed: the
+    # fixed equipment and recipe rows collide on their unique keys, and the in-memory
+    # run/equipment mapping is index-aligned against the whole table, so a second pass
+    # silently mis-assigns every run even if the insert is forced through.
+    counts = asyncio.run(seed(reset=True))
     width = max(len(k) for k in counts)
     for key, value in counts.items():
         print(f"{key:<{width}}  {value:>6,}")

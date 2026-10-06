@@ -213,6 +213,32 @@ def build_graph(
 
         return {"messages": out, "tool_calls_made": state.get("tool_calls_made", 0) + len(calls)}
 
+    async def close_tool_calls(state: TriageState) -> dict[str, Any]:
+        """Answer the outstanding tool calls when the budget is spent.
+
+        Without this, hitting the cap leaves the conversation ending on an assistant
+        message that requested tools and never got results. Providers reject that shape
+        outright (HTTP 400), so the safety cap would turn a long investigation into a
+        failed run — the opposite of what it is for.
+        """
+        last = state["messages"][-1]
+        calls = getattr(last, "tool_calls", []) or []
+        await trace(state, "tools", error=f"tool budget of {cap} calls exhausted")
+        return {
+            "messages": [
+                ToolMessage(
+                    content=(
+                        f"Tool budget exhausted after {cap} calls. No further lookups are "
+                        f"available; reach a conclusion from what you already have, and say "
+                        f"so if the evidence is insufficient."
+                    ),
+                    tool_call_id=call["id"],
+                    name=call["name"],
+                )
+                for call in calls
+            ]
+        }
+
     async def hypothesize(state: TriageState) -> dict[str, Any]:
         """A plain reasoning turn before the structured one.
 
@@ -225,7 +251,9 @@ def build_graph(
 
     async def propose(state: TriageState) -> dict[str, Any]:
         """Produce the structured recommendation and persist it as pending."""
-        disposition, fallback = await _structured_disposition(llm, state["messages"], cap=2)
+        disposition, fallback = await _structured_disposition(
+            llm, state["messages"], cap=settings.structured_output_retries
+        )
 
         await trace(
             state,
@@ -265,17 +293,21 @@ def build_graph(
 
     # --- edges ------------------------------------------------------------
 
-    def after_investigate(state: TriageState) -> Literal["tools", "hypothesize"]:
+    def after_investigate(
+        state: TriageState,
+    ) -> Literal["tools", "close_tool_calls", "hypothesize"]:
         last = state["messages"][-1]
         wants_tools = bool(getattr(last, "tool_calls", None))
-        if wants_tools and state.get("tool_calls_made", 0) < cap:
-            return "tools"
+        if wants_tools:
+            # Pending calls must always be answered, even when the budget is gone.
+            return "tools" if state.get("tool_calls_made", 0) < cap else "close_tool_calls"
         return "hypothesize"
 
     builder = StateGraph(TriageState)
     builder.add_node("load_alarm", load_alarm)
     builder.add_node("investigate", investigate)
     builder.add_node("tools", run_tools)
+    builder.add_node("close_tool_calls", close_tool_calls)
     builder.add_node("hypothesize", hypothesize)
     builder.add_node("propose", propose)
     builder.add_node("human_review", human_review)
@@ -285,6 +317,7 @@ def build_graph(
     builder.add_edge("load_alarm", "investigate")
     builder.add_conditional_edges("investigate", after_investigate)
     builder.add_edge("tools", "investigate")
+    builder.add_edge("close_tool_calls", "hypothesize")
     builder.add_edge("hypothesize", "propose")
     builder.add_edge("propose", "human_review")
     builder.add_edge("human_review", "record_decision")

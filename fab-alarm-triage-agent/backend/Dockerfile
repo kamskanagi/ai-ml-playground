@@ -15,7 +15,12 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /srv
 COPY app ./app
 COPY tools ./tools
-RUN useradd --create-home --uid 10001 app && chown -R app:app /srv
+# Eval reports are written by `python -m app.eval.run` and read by /api/metrics/eval,
+# both from this image, so they need one writable directory they agree on.
+ENV EVAL_REPORTS_DIR=/srv/eval-reports
+RUN mkdir -p /srv/eval-reports \
+    && useradd --create-home --uid 10001 app \
+    && chown -R app:app /srv
 USER app
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \

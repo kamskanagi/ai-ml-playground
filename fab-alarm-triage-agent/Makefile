@@ -3,7 +3,11 @@ COMPOSE := docker compose
 PY := ./.venv/bin/python
 PIP := ./.venv/bin/pip
 
-.PHONY: help venv install up down logs seed test lint fmt shell psql clean
+# Every target is phony. `eval` in particular MUST be listed: a directory named
+# eval/ exists, so without this make reports "`eval' is up to date" and runs nothing.
+.PHONY: help venv install up down logs seed seed-local dev mcp-local eval eval-baseline \
+	ui test lint fmt shell psql clean kind-up kind-down images k8s-deploy k8s-seed \
+	k8s-status k8s-logs smoke
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'

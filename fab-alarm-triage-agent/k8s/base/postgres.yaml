@@ -33,11 +33,9 @@ spec:
           image: postgres:16-alpine
           ports:
             - containerPort: 5432
-          envFrom:
-            - configMapRef:
-                name: fab-config
-            - secretRef:
-                name: fab-secrets
+          # No envFrom here on purpose. Pulling in the whole secret would put
+          # GROQ_API_KEY into the database container, which has no use for it and
+          # widens the blast radius of anyone who can exec into this pod.
           env:
             - name: POSTGRES_USER
               valueFrom:

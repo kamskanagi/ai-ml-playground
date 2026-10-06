@@ -22,6 +22,7 @@ configMapGenerator:
       - MCP_URL=http://mcp:9000/mcp
       - GROQ_MODEL=llama-3.3-70b-versatile
       - MAX_TOOL_CALLS=12
+      - EVAL_REPORTS_DIR=/srv/eval-reports
 
 secretGenerator:
   - name: fab-secrets

@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     max_tool_calls: int = 12
     structured_output_retries: int = 2
 
+    # Where eval reports are written and read. The runner and the metrics endpoint must
+    # agree, and the default resolves differently inside the image than in the repo, so
+    # deployments set it explicitly.
+    eval_reports_dir: str = ""
+
     # Seeding
     seed_demo: int = 42
     seed_eval: int = 1337

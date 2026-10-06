@@ -149,17 +149,22 @@ class TriageAgent:
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
             )
 
-        session.expire_all()
-        run = await triage.get_run(session, started.agent_run_id)
-        steps = (
-            (
-                await session.execute(
-                    select(AgentStep).where(AgentStep.agent_run_id == started.agent_run_id)
+        # Read the result back on a *separate* session. Expiring the caller's session
+        # would invalidate the Alarm rows the eval loop still needs, and touching an
+        # expired instance from async code raises MissingGreenlet rather than reloading.
+        from app.db.session import get_sessionmaker
+
+        async with get_sessionmaker()() as fresh:
+            run = await triage.get_run(fresh, started.agent_run_id)
+            steps = (
+                (
+                    await fresh.execute(
+                        select(AgentStep).where(AgentStep.agent_run_id == started.agent_run_id)
+                    )
                 )
+                .scalars()
+                .all()
             )
-            .scalars()
-            .all()
-        )
         tool_calls = sum(1 for s in steps if s.tool_name)
 
         if run is None or run.disposition is None:

@@ -71,7 +71,8 @@ const POLL_MS = 1500;
 
             @if (d.evidence.length) {
               <dl class="evidence">
-                @for (e of d.evidence; track e.ref) {
+                <!-- ref is not unique: two observations on one signal is a normal answer -->
+                  @for (e of d.evidence; track $index) {
                   <dt class="mono">{{ e.ref }}</dt>
                   <dd>{{ e.detail }}</dd>
                 }
@@ -287,10 +288,19 @@ export class AgentPanel {
 
   /** Poll while the agent is working. Stops as soon as it needs a human or finishes. */
   private refresh(runId: number): void {
-    this.api.run(runId).subscribe({
+    // Piped through takeUntilDestroyed: without it a response landing after the
+    // component is destroyed schedules a fresh timer that nothing will ever clear,
+    // leaving a 1.5s poll running for the life of the tab, once per alarm visited.
+    this.api
+      .run(runId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
       next: (run) => {
         this.run.set(run);
-        this.api.trace(runId).subscribe((steps) => this.steps.set(steps));
+        this.api
+          .trace(runId)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe((steps) => this.steps.set(steps));
         if (run.status === 'running') {
           this.timer = setTimeout(() => this.refresh(runId), POLL_MS);
         } else {
