@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>Multi-Agent System — brag</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/TextPlugin.min.js"></script>
+    <script src="assets/audio-data.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --bg: #0b0e14;
+        --surface: #141922;
+        --surface2: #1b2230;
+        --line: #2a3446;
+        --text: #e6edf3;
+        --muted: #93a1b4;
+        --mint: #56d3a0;
+        --amber: #f2a03d;
+        --blue: #61a6fa;
+        --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        --sans: Inter, ui-sans-serif, system-ui, "Helvetica Neue", sans-serif;
+        --rms: 0;
+        --bass: 0;
+        --treble: 0;
+      }
+
+      html, body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0b0e14;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        font-family: var(--sans);
+        color: var(--text);
+      }
+
+      .clip { position: absolute; inset: 0; }
+
+      /* ---------- persistent background layer ---------- */
+
+      #bg-fill {
+        position: absolute;
+        inset: 0;
+        background: var(--bg);
+      }
+
+      .glow {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(10px);
+        will-change: transform, opacity;
+      }
+
+      #glow-a {
+        width: 1100px; height: 1100px;
+        left: -260px; top: -380px;
+        background: radial-gradient(circle, rgba(86, 211, 160, 0.30) 0%, rgba(86, 211, 160, 0) 68%);
+        transform: scale(calc(1 + var(--bass) * 0.16));
+        opacity: calc(0.62 + var(--rms) * 0.34);
+      }
+
+      #glow-b {
+        width: 1250px; height: 1250px;
+        right: -340px; bottom: -520px;
+        background: radial-gradient(circle, rgba(97, 166, 250, 0.26) 0%, rgba(97, 166, 250, 0) 70%);
+        transform: scale(calc(1 + var(--rms) * 0.13));
+        opacity: calc(0.55 + var(--bass) * 0.30);
+      }
+
+      #grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(147, 161, 180, 0.09) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(147, 161, 180, 0.09) 1px, transparent 1px);
+        background-size: 80px 80px;
+        opacity: calc(0.5 + var(--rms) * 0.2);
+      }
+
+      #ghost {
+        position: absolute;
+        right: 40px;
+        top: 300px;
+        font-family: var(--mono);
+        font-size: 620px;
+        line-height: 1;
+        color: var(--mint);
+        opacity: calc(0.055 + var(--bass) * 0.035);
+        transform: scale(calc(1 + var(--bass) * 0.05));
+      }
+
+      .rule-h {
+        position: absolute;
+        left: 110px; right: 110px;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(42, 52, 70, 0) 0%, rgba(42, 52, 70, 1) 18%, rgba(42, 52, 70, 1) 82%, rgba(42, 52, 70, 0) 100%);
+      }
+      #rule-top { top: 92px; }
+      #rule-bot { bottom: 92px; }
+
+      .meta {
+        position: absolute;
+        font-family: var(--mono);
+        font-size: 22px;
+        letter-spacing: 0.10em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      #meta-tl { left: 112px; top: 50px; }
+      #meta-tr { right: 112px; top: 50px; }
+      #meta-bl { left: 112px; bottom: 48px; }
+      #meta-br { right: 112px; bottom: 48px; color: var(--mint); }
+
+      /* ---------- shared scene furniture ---------- */
+
+      .stage {
+        position: absolute;
+        inset: 92px 110px;
+      }
+
+      .scene-tag {
+        position: absolute;
+        right: 0;
+        top: 44px;
+        font-family: var(--mono);
+        font-size: 22px;
+        letter-spacing: 0.16em;
+        color: var(--muted);
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .scene-tag i {
+        display: block;
+        width: 12px; height: 12px;
+        border-radius: 50%;
+        background: var(--mint);
+      }
+
+      /* ---------- scene 1: terminal ---------- */
+
+      #term {
+        position: absolute;
+        left: 0;
+        top: 96px;
+        width: 1240px;
+        border: 2px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        overflow: hidden;
+        box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+      }
+
+      #term-bar {
+        height: 66px;
+        border-bottom: 2px solid var(--line);
+        background: var(--surface2);
+        display: flex;
+        align-items: center;
+        padding: 0 26px;
+        gap: 14px;
+      }
+      .dot { width: 15px; height: 15px; border-radius: 50%; display: block; }
+      #term-bar span.t {
+        margin-left: 18px;
+        font-family: var(--mono);
+        font-size: 23px;
+        color: var(--muted);
+      }
+
+      #term-body {
+        padding: 38px 42px 46px;
+        font-family: var(--mono);
+        font-size: 34px;
+        line-height: 1.62;
+        color: var(--text);
+      }
+      #term-body .sh { color: var(--mint); }
+      #term-body .pr { color: var(--muted); }
+      #q-text { color: var(--text); }
+
+      #caret {
+        display: inline-block;
+        width: 16px;
+        height: 34px;
+        background: var(--mint);
+        vertical-align: -5px;
+        margin-left: 3px;
+      }
+      @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+      .caret-blink { animation: blink 0.78s step-end infinite; }
+      .caret-solid { animation: none; opacity: 1; }
+
+      #s1-hook {
+        position: absolute;
+        left: 0;
+        top: 640px;
+        width: 1420px;
+        font-size: 86px;
+        font-weight: 800;
+        line-height: 1.08;
+        letter-spacing: -0.025em;
+      }
+
+      #s1-side {
+        position: absolute;
+        right: 0;
+        top: 180px;
+        width: 300px;
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 24px;
+        line-height: 1.9;
+        color: var(--muted);
+      }
+      #s1-side b { color: var(--mint); font-weight: 500; }
+
+      /* Scene 1 entrances start hidden in CSS, not via a tl.set at position 0:
+         a zero-duration set at 0 does not render while the playhead sits on 0,
+         so frame 0 would otherwise flash the un-hidden state. */
+      #t-line1, #t-line2, #s1-hook, #s1-side, #s1-tag { opacity: 0; }
+
+      /* ---------- scene 2: the twist ---------- */
+
+      #s2-head {
+        position: absolute;
+        left: 0;
+        top: 196px;
+        width: 1500px;
+        font-size: 118px;
+        font-weight: 800;
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+      }
+
+      #s2-rule {
+        position: absolute;
+        left: 0;
+        top: 512px;
+        width: 620px;
+        height: 3px;
+        background: var(--amber);
+        transform-origin: left center;
+      }
+
+      #s2-quote {
+        position: absolute;
+        left: 0;
+        top: 568px;
+        width: 1360px;
+        font-family: var(--mono);
+        font-size: 44px;
+        line-height: 1.5;
+        color: var(--amber);
+      }
+
+      #s2-credit {
+        position: absolute;
+        left: 0;
+        top: 662px;
+        font-family: var(--mono);
+        font-size: 24px;
+        letter-spacing: 0.10em;
+        color: var(--muted);
+      }
+
+      /* ---------- scene 3: the graph ---------- */
+
+      #s3-head {
+        position: absolute;
+        left: 0;
+        top: 40px;
+        font-family: var(--mono);
+        font-size: 30px;
+        color: var(--muted);
+      }
+      #s3-head b { color: var(--text); font-weight: 500; }
+
+      #graph-svg {
+        position: absolute;
+        left: -110px;
+        top: -92px;
+        width: 1920px;
+        height: 1080px;
+      }
+
+      .node {
+        position: absolute;
+        width: 360px;
+        height: 210px;
+        border: 2px solid var(--line);
+        border-radius: 16px;
+        background: var(--surface);
+        padding: 30px 28px;
+        top: 383px;
+      }
+      #n1 { left: 130px; }
+      #n2 { left: 670px; }
+      #n3 { left: 1210px; }
+
+      .node .k {
+        font-family: var(--mono);
+        font-size: 24px;
+        letter-spacing: 0.14em;
+        margin-bottom: 16px;
+      }
+      .node .v {
+        font-size: 44px;
+        font-weight: 700;
+        letter-spacing: -0.015em;
+      }
+      .node .i {
+        position: absolute;
+        right: 26px;
+        bottom: 22px;
+        font-family: var(--mono);
+        font-size: 22px;
+        color: var(--muted);
+      }
+      .node .ring {
+        position: absolute;
+        left: 28px;
+        bottom: 24px;
+        width: 20px; height: 20px;
+        border-radius: 50%;
+      }
+      #n1 .k, #n1 .v { color: var(--blue); }
+      #n1 .v { color: var(--text); }
+      #n1 .ring { background: var(--blue); box-shadow: 0 0 calc(16px + var(--bass) * 30px) var(--blue); }
+      #n2 .k { color: var(--mint); }
+      #n2 .ring { background: var(--mint); box-shadow: 0 0 calc(16px + var(--bass) * 30px) var(--mint); }
+      #n3 .k { color: var(--amber); }
+      #n3 .ring { background: var(--amber); box-shadow: 0 0 calc(16px + var(--bass) * 30px) var(--amber); }
+
+      #loop-label {
+        position: absolute;
+        left: 1010px;
+        top: 168px;
+        transform: translateX(-50%);
+        font-family: var(--mono);
+        font-size: 36px;
+        color: var(--amber);
+        background: var(--surface2);
+        border: 2px solid var(--amber);
+        border-radius: 10px;
+        padding: 8px 22px;
+      }
+
+      /* ---------- scene 4: the verdict ---------- */
+
+      #s4-head {
+        position: absolute;
+        left: 0;
+        top: 40px;
+        font-family: var(--mono);
+        font-size: 30px;
+        color: var(--muted);
+      }
+
+      .vcard {
+        position: absolute;
+        left: 0;
+        top: 188px;
+        width: 1130px;
+        border: 2px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        overflow: hidden;
+        box-shadow: 0 36px 80px rgba(0, 0, 0, 0.5);
+      }
+      .vcard .head {
+        height: 62px;
+        border-bottom: 2px solid var(--line);
+        background: var(--surface2);
+        display: flex;
+        align-items: center;
+        padding: 0 26px;
+        font-family: var(--mono);
+        font-size: 23px;
+        color: var(--muted);
+      }
+      .vcard .body { padding: 44px 44px 50px; }
+      .vcard .dec {
+        font-family: var(--mono);
+        font-size: 58px;
+        color: var(--text);
+        letter-spacing: -0.01em;
+      }
+      .vcard .rsn {
+        margin-top: 22px;
+        font-family: var(--mono);
+        font-size: 32px;
+        color: var(--muted);
+      }
+      #v1-word { color: var(--amber); }
+      #v2-word { color: var(--mint); }
+
+      .stamp {
+        position: absolute;
+        font-family: var(--mono);
+        font-size: 78px;
+        font-weight: 700;
+        letter-spacing: 0.10em;
+        padding: 14px 34px;
+        border-radius: 12px;
+      }
+      #stamp-revise {
+        left: 690px;
+        top: 250px;
+        color: var(--amber);
+        border: 5px solid var(--amber);
+      }
+      #stamp-approve {
+        left: 700px;
+        top: 250px;
+        color: var(--mint);
+        border: 5px solid var(--mint);
+      }
+
+      #s4-side {
+        position: absolute;
+        right: 0;
+        top: 250px;
+        width: 480px;
+      }
+      #s4-side .lbl {
+        font-family: var(--mono);
+        font-size: 23px;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 20px;
+      }
+      #rev-chip {
+        display: block;
+        font-family: var(--mono);
+        font-size: 38px;
+        color: var(--amber);
+        border: 2px solid var(--amber);
+        border-radius: 12px;
+        padding: 18px 24px;
+        background: rgba(242, 160, 61, 0.08);
+      }
+      #s4-note {
+        margin-top: 28px;
+        font-family: var(--mono);
+        font-size: 26px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      /* ---------- scene 5: outro ---------- */
+
+      #o-eyebrow {
+        position: absolute;
+        left: 0;
+        top: 250px;
+        font-family: var(--mono);
+        font-size: 28px;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+      }
+      #o-rule {
+        position: absolute;
+        left: 0;
+        top: 320px;
+        width: 260px;
+        height: 5px;
+        background: var(--mint);
+        transform-origin: left center;
+      }
+      #o-title {
+        position: absolute;
+        left: 0;
+        top: 368px;
+        font-size: 132px;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1.02;
+      }
+      #o-pipeline {
+        position: absolute;
+        left: 0;
+        top: 552px;
+        font-family: var(--mono);
+        font-size: 50px;
+        color: var(--mint);
+        letter-spacing: 0.01em;
+      }
+      #o-echo {
+        position: absolute;
+        right: 40px;
+        top: 372px;
+        width: 420px;
+        height: 240px;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-chcm" id="root" data-composition-id="main" data-start="0" data-duration="20.4" data-width="1920" data-height="1080" data-fps="30">
+      <!-- ============ persistent background ============ -->
+      <div data-hf-id="hf-6bw9" id="bg" class="clip" data-start="0" data-duration="20.4" data-track-index="0">
+        <div data-hf-id="hf-02i2" id="bg-fill"></div>
+        <div data-hf-id="hf-ika0" id="grid" data-layout-ignore=""></div>
+        <div data-hf-id="hf-nw65" id="glow-a" class="glow" data-layout-ignore=""></div>
+        <div data-hf-id="hf-u1vy" id="glow-b" class="glow" data-layout-ignore=""></div>
+        <div data-hf-id="hf-pc8r" id="ghost" data-layout-ignore="">⇄</div>
+        <div data-hf-id="hf-vqa2" id="rule-top" class="rule-h" data-layout-ignore=""></div>
+        <div data-hf-id="hf-bwy4" id="rule-bot" class="rule-h" data-layout-ignore=""></div>
+        <div data-hf-id="hf-12hi" id="meta-tl" class="meta">multi_agent_system</div>
+        <div data-hf-id="hf-6663" id="meta-tr" class="meta">langgraph state machine</div>
+        <div data-hf-id="hf-tr78" id="meta-bl" class="meta">planner / worker / reviewer</div>
+        <div data-hf-id="hf-76u3" id="meta-br" class="meta">max 2 revisions</div>
+      </div>
+
+      <!-- ============ scene 1 — the terminal ============ -->
+      <div data-hf-id="hf-lw00" id="s1-terminal" class="clip" data-start="0" data-duration="4.39" data-track-index="1">
+        <div data-hf-id="hf-tan6" class="stage">
+          <div data-hf-id="hf-trop" id="s1-tag" class="scene-tag"><i data-hf-id="hf-wt6k"></i>01 / run</div>
+
+          <div data-hf-id="hf-q8fr" id="term">
+            <div data-hf-id="hf-7qbb" id="term-bar">
+              <span data-hf-id="hf-wpyl" class="dot" style="background:#f2a03d"></span>
+              <span data-hf-id="hf-226m" class="dot" style="background:#56d3a0"></span>
+              <span data-hf-id="hf-zmpu" class="dot" style="background:#61a6fa"></span>
+              <span data-hf-id="hf-v6cu" class="t">bash — multi_agent_system</span>
+            </div>
+            <div data-hf-id="hf-8kg4" id="term-body">
+              <div data-hf-id="hf-2dzf" id="t-line1"><span data-hf-id="hf-hb80" class="sh">$</span> python app.py</div>
+              <div data-hf-id="hf-5uhg" id="t-line2"><span data-hf-id="hf-6aa4" class="pr">Enter your query:</span> <span data-hf-id="hf-vnk1" id="q-text"></span><span data-hf-id="hf-mdji" id="caret" class="caret-blink"></span></div>
+            </div>
+          </div>
+
+          <div data-hf-id="hf-0e5b" id="s1-side">
+            <div data-hf-id="hf-ch0y">entry point</div>
+            <div data-hf-id="hf-yeow"><b data-hf-id="hf-f6ld">app.py</b></div>
+            <div data-hf-id="hf-ovlt">graph nodes</div>
+            <div data-hf-id="hf-y7yw"><b data-hf-id="hf-sc0y">3</b></div>
+          </div>
+
+          <div data-hf-id="hf-3pzy" id="s1-hook">Most AI answers with its first draft.</div>
+        </div>
+      </div>
+
+      <!-- ============ scene 2 — the twist ============ -->
+      <div data-hf-id="hf-zuf8" id="s2-manager" class="clip" data-start="4.4" data-duration="2.99" data-track-index="1">
+        <div data-hf-id="hf-xa86" class="stage">
+          <div data-hf-id="hf-ba02" id="s2-tag" class="scene-tag"><i data-hf-id="hf-fvcc" style="background:var(--amber)"></i>02 / the twist</div>
+          <div data-hf-id="hf-j9b3" id="s2-head">So we gave it a manager.</div>
+          <div data-hf-id="hf-dx9d" id="s2-rule"></div>
+          <div data-hf-id="hf-h6l7" id="s2-quote">“You are a Strict Reviewer agent.”</div>
+          <div data-hf-id="hf-5cgy" id="s2-credit">app.py · reviewer_agent</div>
+        </div>
+      </div>
+
+      <!-- ============ scene 3 — the graph ============ -->
+      <div data-hf-id="hf-jbar" id="s3-graph" class="clip" data-start="7.4" data-duration="4.59" data-track-index="1">
+        <div data-hf-id="hf-xoj7" class="stage">
+          <div data-hf-id="hf-vhfn" id="s3-tag" class="scene-tag"><i data-hf-id="hf-zeb8"></i>03 / the graph</div>
+          <div data-hf-id="hf-csso" id="s3-head">workflow = <b data-hf-id="hf-qc6l">StateGraph(dict)</b></div>
+
+          <svg data-hf-id="hf-kvlm" id="graph-svg" viewBox="0 0 1920 1080" fill="none" data-layout-ignore="">
+            <path data-hf-id="hf-5hkr" id="edge1" d="M 610 580 L 762 580" stroke="#2a3446" stroke-width="4" stroke-linecap="round" />
+            <polygon data-hf-id="hf-uk3k" id="head1" points="762,568 790,580 762,592" fill="#2a3446" />
+            <path data-hf-id="hf-jlef" id="edge2" d="M 1150 580 L 1302 580" stroke="#2a3446" stroke-width="4" stroke-linecap="round" />
+            <polygon data-hf-id="hf-jrty" id="head2" points="1302,568 1330,580 1302,592" fill="#2a3446" />
+            <path data-hf-id="hf-cjgd" id="loop-edge" d="M 1500 465 L 1500 372 Q 1500 342 1470 342 L 990 342 Q 960 342 960 372 L 960 452" stroke="#f2a03d" stroke-width="5" stroke-linecap="round" />
+            <polygon data-hf-id="hf-m52e" id="loop-head" points="948,452 972,452 960,480" fill="#f2a03d" />
+          </svg>
+
+          <div data-hf-id="hf-7v2x" id="n1" class="node">
+            <div data-hf-id="hf-a95l" class="k">PLANNER</div>
+            <div data-hf-id="hf-7ymo" class="v">strategist</div>
+            <div data-hf-id="hf-0qcu" class="ring"></div>
+            <div data-hf-id="hf-ogxa" class="i">01</div>
+          </div>
+          <div data-hf-id="hf-bt6y" id="n2" class="node">
+            <div data-hf-id="hf-gjfl" class="k">WORKER</div>
+            <div data-hf-id="hf-hftk" class="v">doer</div>
+            <div data-hf-id="hf-ul4i" class="ring"></div>
+            <div data-hf-id="hf-ov8b" class="i">02</div>
+          </div>
+          <div data-hf-id="hf-hywr" id="n3" class="node">
+            <div data-hf-id="hf-itj4" class="k">REVIEWER</div>
+            <div data-hf-id="hf-ufn1" class="v">feedback</div>
+            <div data-hf-id="hf-uzfj" class="ring"></div>
+            <div data-hf-id="hf-p9jc" class="i">03</div>
+          </div>
+
+          <div data-hf-id="hf-tf0m" id="loop-label">revise</div>
+        </div>
+      </div>
+
+      <!-- ============ scene 4 — the verdict ============ -->
+      <div data-hf-id="hf-4g16" id="s4-verdict" class="clip" data-start="12" data-duration="5.19" data-track-index="1">
+        <div data-hf-id="hf-y2u8" class="stage">
+          <div data-hf-id="hf-gap8" id="s4-tag" class="scene-tag"><i data-hf-id="hf-ao04" style="background:var(--amber)"></i>04 / the verdict</div>
+          <div data-hf-id="hf-f9bo" id="s4-head">reviewer_agent → review_router</div>
+
+          <div data-hf-id="hf-d1iz" id="vcard1" class="vcard">
+            <div data-hf-id="hf-t9mh" class="head">logs/reviewer_output_1.txt</div>
+            <div data-hf-id="hf-2t3w" class="body">
+              <div data-hf-id="hf-oxx0" class="dec">Decision: <span data-hf-id="hf-qjmq" id="v1-word">revise</span></div>
+              <div data-hf-id="hf-lghi" class="rsn">Reason: no concrete examples</div>
+            </div>
+          </div>
+
+          <div data-hf-id="hf-261c" id="vcard2" class="vcard">
+            <div data-hf-id="hf-bzlg" class="head">logs/reviewer_output_2.txt</div>
+            <div data-hf-id="hf-6g9g" class="body">
+              <div data-hf-id="hf-o4wc" class="dec">Decision: <span data-hf-id="hf-ap44" id="v2-word">approve</span></div>
+              <div data-hf-id="hf-f0zd" class="rsn" id="v2-rsn">Reason: examples and tradeoffs</div>
+            </div>
+          </div>
+
+          <div data-hf-id="hf-oudr" id="stamp-revise" class="stamp" data-layout-allow-overlap="" data-layout-allow-occlusion="">REVISE</div>
+          <div data-hf-id="hf-jmpv" id="stamp-approve" class="stamp" data-layout-allow-overlap="" data-layout-allow-occlusion="">APPROVE</div>
+
+          <div data-hf-id="hf-3nek" id="s4-side">
+            <div data-hf-id="hf-1d27" class="lbl">graph state</div>
+            <span data-hf-id="hf-kt0q" id="rev-chip">revision_count: 1</span>
+            <div data-hf-id="hf-1zxj" id="s4-note">worker_agent runs again with the reviewer’s reason attached.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ scene 5 — outro ============ -->
+      <div data-hf-id="hf-zxyi" id="s5-outro" class="clip" data-start="17.2" data-duration="3.2" data-track-index="1">
+        <div data-hf-id="hf-vap1" class="stage">
+          <div data-hf-id="hf-2yed" id="o-eyebrow">LangGraph · Llama 3.3 70B on Groq</div>
+          <div data-hf-id="hf-3edn" id="o-rule"></div>
+          <div data-hf-id="hf-60n7" id="o-title">Multi-Agent System</div>
+          <div data-hf-id="hf-6t0i" id="o-pipeline">Planner → Worker ⇄ Reviewer</div>
+
+          <svg data-hf-id="hf-zc9t" id="o-echo" viewBox="0 0 420 240" fill="none" data-layout-ignore="">
+            <path data-hf-id="hf-ygqg" id="o-arc" d="M 340 96 L 340 56 Q 340 36 320 36 L 130 36 Q 110 36 110 56 L 110 88" stroke="#f2a03d" stroke-width="4" stroke-linecap="round" />
+            <polygon data-hf-id="hf-nb5l" points="100,88 120,88 110,110" fill="#f2a03d" />
+            <line data-hf-id="hf-2agp" x1="130" y1="150" x2="188" y2="150" stroke="#2a3446" stroke-width="4" />
+            <line data-hf-id="hf-y2lp" x1="252" y1="150" x2="310" y2="150" stroke="#2a3446" stroke-width="4" />
+            <circle data-hf-id="hf-ygf8" id="o-d1" cx="110" cy="150" r="18" fill="#61a6fa" />
+            <circle data-hf-id="hf-ym3z" id="o-d2" cx="220" cy="150" r="18" fill="#56d3a0" />
+            <circle data-hf-id="hf-0tck" id="o-d3" cx="340" cy="150" r="18" fill="#f2a03d" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- ============ audio ============ -->
+      <audio data-hf-id="hf-ex16" id="bgm" src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3" data-start="0" data-duration="20.4" data-track-index="10" data-volume="0.32"></audio>
+
+      <audio data-hf-id="hf-6tto" id="k1" src="assets/sfx/keyboard/keypress-003.wav" data-start="1.00" data-duration="0.25" data-track-index="11" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-ho5k" id="k2" src="assets/sfx/keyboard/keypress-011.wav" data-start="1.14" data-duration="0.25" data-track-index="12" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-o3ke" id="k3" src="assets/sfx/keyboard/keypress-007.wav" data-start="1.28" data-duration="0.25" data-track-index="13" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-pfhn" id="k4" src="assets/sfx/keyboard/keypress-019.wav" data-start="1.42" data-duration="0.25" data-track-index="14" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-if52" id="k5" src="assets/sfx/keyboard/keypress-015.wav" data-start="1.56" data-duration="0.25" data-track-index="15" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-cyyd" id="k6" src="assets/sfx/keyboard/keypress-027.wav" data-start="1.70" data-duration="0.25" data-track-index="16" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-65ry" id="k7" src="assets/sfx/keyboard/keypress-023.wav" data-start="1.84" data-duration="0.25" data-track-index="17" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-rdwi" id="k8" src="assets/sfx/keyboard/keypress-031.wav" data-start="1.98" data-duration="0.25" data-track-index="18" data-volume="0.5"></audio>
+
+      <audio data-hf-id="hf-smtm" id="sfx-hook" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="1.92" data-duration="0.18" data-track-index="19" data-volume="0.72"></audio>
+      <audio data-hf-id="hf-23hu" id="sfx-twist" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="4.42" data-duration="0.15" data-track-index="20" data-volume="0.72"></audio>
+
+      <audio data-hf-id="hf-zsrd" id="sfx-n1" src="assets/sfx/interface/drop_001.ogg" data-start="8.00" data-duration="0.11" data-track-index="21" data-volume="0.62"></audio>
+      <audio data-hf-id="hf-rfk6" id="sfx-n2" src="assets/sfx/interface/drop_001.ogg" data-start="9.00" data-duration="0.11" data-track-index="22" data-volume="0.62"></audio>
+      <audio data-hf-id="hf-dk6q" id="sfx-n3" src="assets/sfx/interface/drop_001.ogg" data-start="10.00" data-duration="0.11" data-track-index="23" data-volume="0.62"></audio>
+      <audio data-hf-id="hf-5x32" id="sfx-loop" src="assets/sfx/impact/impactSoft_medium_002.ogg" data-start="10.50" data-duration="0.14" data-track-index="24" data-volume="0.7"></audio>
+
+      <audio data-hf-id="hf-j9bx" id="sfx-revise" src="assets/sfx/interface/error_005.ogg" data-start="12.88" data-duration="0.5" data-track-index="25" data-volume="0.6"></audio>
+      <audio data-hf-id="hf-jw87" id="sfx-approve" src="assets/sfx/impact/impactBell_heavy_000.ogg" data-start="16.00" data-duration="1.48" data-track-index="26" data-volume="0.78"></audio>
+      <audio data-hf-id="hf-61wh" id="sfx-title" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="17.50" data-duration="0.18" data-track-index="27" data-volume="0.72"></audio>
+    </div>
+
+    <script>
+      gsap.registerPlugin(TextPlugin);
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const root = document.getElementById("root");
+      const caret = document.getElementById("caret");
+
+      /* ---------------- audio-reactive background ----------------
+         Pre-extracted per-frame bands (assets/audio-data.js). Bass and RMS
+         drive glow scale/opacity and node-ring bloom only — never text. */
+      (function audioReactive() {
+        const data = window.AUDIO_DATA;
+        if (!data || !data.frames || !data.frames.length) return; // render continues without it
+        const SMOOTH = 0.72;
+        let pr = 0, pb = 0, pt = 0;
+        for (let f = 0; f < data.totalFrames; f++) {
+          const fr = data.frames[f];
+          const bands = fr.bands || [];
+          const bass = bands.length ? (bands[0] + (bands[1] || 0)) / 2 : 0;
+          const treble = bands.length > 5 ? (bands[bands.length - 1] + bands[bands.length - 2]) / 2 : 0;
+          pr = pr * SMOOTH + (fr.rms || 0) * (1 - SMOOTH);
+          pb = pb * SMOOTH + bass * (1 - SMOOTH);
+          pt = pt * SMOOTH + treble * (1 - SMOOTH);
+          const vr = pr.toFixed(4), vb = pb.toFixed(4), vt = pt.toFixed(4);
+          tl.call(
+            function (a, b, c) {
+              root.style.setProperty("--rms", a);
+              root.style.setProperty("--bass", b);
+              root.style.setProperty("--treble", c);
+            },
+            [vr, vb, vt],
+            f / data.fps
+          );
+        }
+      })();
+
+      /* ---------------- scene 1 — the terminal (0 → 4.39) ---------------- */
+      tl.set("#q-text", { text: { value: "" } }, 0);
+
+      tl.fromTo("#term", { opacity: 0, y: 36, scale: 0.985 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      tl.fromTo("#s1-tag", { opacity: 0, x: 26 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 0.25);
+      tl.fromTo("#t-line1", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.25, ease: "power2.out" }, 0.4);
+      tl.fromTo("#s1-side", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 0.6);
+      tl.fromTo("#t-line2", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.25, ease: "power2.out" }, 0.75);
+
+      // query types out — 33 chars at ~30cps
+      tl.call(function () { caret.className = "caret-solid"; }, [], 0.95);
+      tl.to("#q-text", { text: { value: "Design a rate limiter for our API" }, duration: 1.1, ease: "none" }, 0.95);
+      tl.call(function () { caret.className = "caret-blink"; }, [], 2.05);
+
+      // hook line — settled 2.35 → 4.39 (2.04s hold)
+      tl.fromTo("#s1-hook", { opacity: 0, y: 46 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 1.95);
+
+      /* ---------------- scene 2 — the twist (4.4 → 7.39) ---------------- */
+      tl.set(["#s2-head", "#s2-quote", "#s2-credit", "#s2-tag"], { opacity: 0 }, 4.4);
+      tl.set("#s2-rule", { scaleX: 0 }, 4.4);
+
+      tl.fromTo("#s2-head", { opacity: 0, y: 54, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.3)" }, 4.45);
+      tl.fromTo("#s2-tag", { opacity: 0, x: 26 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 4.6);
+      tl.to("#s2-rule", { scaleX: 1, duration: 0.45, ease: "power3.inOut" }, 5.1);
+      tl.fromTo("#s2-quote", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, 5.25);
+      tl.fromTo("#s2-credit", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "none" }, 5.55);
+
+      /* ---------------- scene 3 — the graph (7.4 → 11.99) ----------------
+         // beat-grid: node 1 at 8.02s, node 2 at 9.02s, node 3 at 10.02s (120.19 BPM,
+         // every other beat so each label clears its reading floor)
+         // beat-grid: loop edge draw begins 10.52s                                   */
+      tl.set(["#s3-head", "#s3-tag", "#n1", "#n2", "#n3", "#loop-label", "#head1", "#head2", "#loop-head"], { opacity: 0 }, 7.4);
+      tl.set(["#edge1", "#edge2"], { strokeDasharray: 160, strokeDashoffset: 160 }, 7.4);
+      tl.set("#loop-edge", { strokeDasharray: 1200, strokeDashoffset: 1200 }, 7.4);
+
+      tl.fromTo("#s3-head", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 7.45);
+      tl.fromTo("#s3-tag", { opacity: 0, x: 26 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 7.5);
+
+      tl.fromTo("#n1", { opacity: 0, y: 44, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 8.02);
+      tl.to("#edge1", { strokeDashoffset: 0, duration: 0.3, ease: "power2.inOut" }, 8.55);
+      tl.to("#head1", { opacity: 1, duration: 0.14, ease: "none" }, 8.82);
+
+      tl.fromTo("#n2", { opacity: 0, y: 44, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 9.02);
+      tl.to("#edge2", { strokeDashoffset: 0, duration: 0.3, ease: "power2.inOut" }, 9.55);
+      tl.to("#head2", { opacity: 1, duration: 0.14, ease: "none" }, 9.82);
+
+      tl.fromTo("#n3", { opacity: 0, y: 44, scale: 0.92 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 10.02);
+
+      // the payoff: the conditional edge running backwards
+      tl.to("#loop-edge", { strokeDashoffset: 0, duration: 0.43, ease: "power2.inOut" }, 10.52);
+      tl.to("#loop-head", { opacity: 1, duration: 0.12, ease: "none" }, 10.93);
+      tl.fromTo("#loop-label", { opacity: 0, scale: 0.84 }, { opacity: 1, scale: 1, duration: 0.22, ease: "back.out(2)" }, 10.95);
+
+      /* ---------------- scene 4 — the verdict (12.0 → 17.19) ----------------
+         // beat-locked: APPROVE stamp at 16.02s (strongCue, intensity 1.00)          */
+      tl.set(["#s4-head", "#s4-tag", "#rev-chip", "#s4-note"], { opacity: 0 }, 12);
+      tl.set(".vcard .dec, .vcard .rsn", { opacity: 0 }, 12);
+      tl.set("#vcard2", { opacity: 0, x: 900 }, 12);
+      tl.set(["#stamp-revise", "#stamp-approve"], { opacity: 0, scale: 1.6, rotation: -26 }, 12);
+      tl.set("#s4-side .lbl", { opacity: 0 }, 12);
+
+      tl.fromTo("#vcard1", { opacity: 0, x: -70 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, 12);
+      tl.fromTo("#s4-head", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, 12.05);
+      tl.fromTo("#s4-tag", { opacity: 0, x: 26 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, 12.1);
+      tl.to("#vcard1 .dec", { opacity: 1, duration: 0.25, ease: "none" }, 12.45);
+      tl.to("#vcard1 .rsn", { opacity: 1, duration: 0.25, ease: "none" }, 12.57);
+      tl.to("#stamp-revise", { opacity: 1, scale: 1, rotation: -11, duration: 0.34, ease: "back.out(2.2)" }, 12.9);
+
+      // the work goes back
+      tl.to(["#vcard1", "#stamp-revise"], { opacity: 0, x: -520, duration: 0.3, ease: "power2.in" }, 14.3);
+      tl.to("#s4-side .lbl", { opacity: 1, duration: 0.24, ease: "none" }, 14.34);
+      tl.fromTo("#rev-chip", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3, ease: "back.out(1.8)" }, 14.4);
+      tl.to("#s4-note", { opacity: 1, duration: 0.3, ease: "none" }, 14.55);
+
+      // card 2 enters while card 1 is still leaving — the handoff must overlap,
+      // or the centerpiece reads as an empty frame mid-scene. Its text fades in
+      // *during* the slide so the card arrives already carrying the verdict
+      // rather than landing as a blank panel.
+      tl.to("#vcard2", { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 14.55);
+      tl.to("#vcard2 .dec", { opacity: 1, duration: 0.25, ease: "none" }, 14.7);
+      tl.to("#v2-rsn", { opacity: 1, duration: 0.25, ease: "none" }, 14.95);
+      tl.to("#stamp-approve", { opacity: 1, scale: 1, rotation: -11, duration: 0.36, ease: "back.out(2.2)" }, 16.02);
+
+      /* ---------------- scene 5 — outro (17.2 → 20.4) ----------------
+         // beat-locked: title slam at 17.52s (strongCue, intensity 1.00)
+         // beat-locked: pipeline line at 18.52s (strongCue, intensity 1.00)          */
+      tl.set(["#o-eyebrow", "#o-title", "#o-pipeline", "#o-echo"], { opacity: 0 }, 17.2);
+      tl.set("#o-rule", { scaleX: 0 }, 17.2);
+
+      tl.fromTo("#o-eyebrow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 17.3);
+      tl.to("#o-rule", { scaleX: 1, duration: 0.4, ease: "power3.inOut" }, 17.52);
+      tl.fromTo("#o-title", { opacity: 0, y: 52, scale: 0.965 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.5)" }, 17.52);
+      tl.fromTo("#o-echo", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 18.1);
+      tl.fromTo("#o-pipeline", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 18.52);
+
+      // the echo keeps breathing so the final hold is never a frozen frame
+      tl.to(["#o-d1", "#o-d2", "#o-d3"], { scale: 1.16, transformOrigin: "center center", duration: 0.55, ease: "sine.inOut", stagger: 0.12, yoyo: true, repeat: 2 }, 18.6);
+
+      // music fades out under the title.
+      // volume tweens are ABSOLUTE (they replace data-volume rather than scale it),
+      // so the fade names the bed's real gain as its start value.
+      tl.fromTo("#bgm", { volume: 0.32 }, { volume: 0, duration: 1.0, ease: "power1.in", immediateRender: false }, 19.4);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

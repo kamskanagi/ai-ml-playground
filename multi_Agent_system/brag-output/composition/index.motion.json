@@ -1,0 +1,29 @@
+{
+  "duration": 20.4,
+  "assertions": [
+    { "kind": "appearsBy", "selector": "#s1-terminal", "bySec": 0.7 },
+    { "kind": "appearsBy", "selector": "#s1-hook", "bySec": 2.6 },
+    { "kind": "appearsBy", "selector": "#s2-head", "bySec": 5.2 },
+    { "kind": "appearsBy", "selector": "#s2-quote", "bySec": 5.8 },
+    { "kind": "before", "a": "#s2-head", "b": "#s2-quote" },
+    { "kind": "appearsBy", "selector": "#n1", "bySec": 8.6 },
+    { "kind": "appearsBy", "selector": "#n2", "bySec": 9.6 },
+    { "kind": "appearsBy", "selector": "#n3", "bySec": 10.6 },
+    { "kind": "before", "a": "#n1", "b": "#n2" },
+    { "kind": "before", "a": "#n2", "b": "#n3" },
+    { "kind": "appearsBy", "selector": "#loop-label", "bySec": 11.5 },
+    { "kind": "before", "a": "#n3", "b": "#loop-label" },
+    { "kind": "appearsBy", "selector": "#stamp-revise", "bySec": 13.5 },
+    { "kind": "appearsBy", "selector": "#stamp-approve", "bySec": 16.6 },
+    { "kind": "before", "a": "#stamp-revise", "b": "#stamp-approve" },
+    { "kind": "appearsBy", "selector": "#o-title", "bySec": 18.2 },
+    { "kind": "appearsBy", "selector": "#o-pipeline", "bySec": 19.1 },
+    { "kind": "before", "a": "#o-title", "b": "#o-pipeline" },
+    { "kind": "staysInFrame", "selector": "#o-title" },
+    { "kind": "staysInFrame", "selector": "#o-pipeline" },
+    { "kind": "staysInFrame", "selector": "#n1" },
+    { "kind": "staysInFrame", "selector": "#n2" },
+    { "kind": "staysInFrame", "selector": "#n3" },
+    { "kind": "keepsMoving", "maxStaticSec": 1.5 }
+  ]
+}
